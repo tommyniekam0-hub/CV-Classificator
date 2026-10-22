@@ -1,0 +1,9 @@
+streamlit
+PyMuPDF
+python-docx
+pandas
+scikit-learn
+numpy
+openpyxl
+easyocr
+plotly
