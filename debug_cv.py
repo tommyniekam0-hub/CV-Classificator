@@ -1,9 +1,12 @@
+import sys
 import fitz
 import re
-from datetime import datetime
 
-# ⚠️ REMPLACEZ par un CV qui ne marche pas
-chemin = r"C:\Users\HP\Desktop\CLASSIFICATEUR_CV\cv_a_traiter\LE_CV_QUI_BUG.pdf"
+# Usage : python debug_cv.py chemin/vers/le_cv_qui_bug.pdf
+if len(sys.argv) != 2:
+    print("Usage : python debug_cv.py <chemin_du_cv.pdf>")
+    sys.exit(1)
+chemin = sys.argv[1]
 
 doc = fitz.open(chemin)
 texte = ""

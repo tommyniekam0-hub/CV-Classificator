@@ -1,9 +1,12 @@
-streamlit
+streamlit>=1.37
 PyMuPDF
 python-docx
 pandas
 scikit-learn
 numpy
 openpyxl
-easyocr
 plotly
+# OCR des CV scannés (optionnel, télécharge PyTorch ~1-2 Go)
+easyocr
+# Uniquement pour test_email.py sous Python < 3.11
+tomli; python_version < "3.11"

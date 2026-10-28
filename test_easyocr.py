@@ -1,3 +1,4 @@
+import sys
 import easyocr
 import fitz
 import os
@@ -7,8 +8,8 @@ import time
 # CONFIGURATION
 # ============================================================
 
-# ⚠️ Dossier contenant vos CV (changez si besoin)
-DOSSIER_CV = r"C:\Users\HP\Desktop\CV A TRAITER"
+# Dossier contenant vos CV : python test_easyocr.py [dossier] (défaut : cv_a_traiter)
+DOSSIER_CV = sys.argv[1] if len(sys.argv) > 1 else "cv_a_traiter"
 
 # ============================================================
 # CHARGEMENT DU MODÈLE
@@ -26,11 +27,8 @@ print(f"✅ Modèle chargé en {time.time() - debut:.1f} secondes\n")
 # ============================================================
 if not os.path.isdir(DOSSIER_CV):
     print(f"❌ Dossier introuvable : {DOSSIER_CV}")
-    print(f"💡 Vérifiez le chemin. Dossiers disponibles sur le Bureau :")
-    bureau = r"C:\Users\HP\Desktop"
-    for f in os.listdir(bureau):
-        print(f"   - {f}")
-    exit(1)
+    print("💡 Usage : python test_easyocr.py <dossier_des_cv>")
+    sys.exit(1)
 
 # Lister les CV
 fichiers = [f for f in os.listdir(DOSSIER_CV) 
@@ -38,8 +36,8 @@ fichiers = [f for f in os.listdir(DOSSIER_CV)
 
 if not fichiers:
     print(f"❌ Aucun CV trouvé dans {DOSSIER_CV}")
-    print(f"💡 Formats acceptés : PDF, DOCX, PNG, JPG")
-    exit(1)
+    print("💡 Formats acceptés : PDF, DOCX, PNG, JPG")
+    sys.exit(1)
 
 print(f"📁 Dossier : {DOSSIER_CV}")
 print(f"📄 {len(fichiers)} fichier(s) trouvé(s) :")
@@ -56,6 +54,7 @@ print("\n" + "=" * 70)
 print(f"ANALYSE : {fichiers[0]}")
 print("=" * 70)
 
+texte_complet = []
 try:
     doc = fitz.open(chemin_cv)
     print(f"\n✅ Fichier ouvert - {len(doc)} page(s)\n")
@@ -73,6 +72,7 @@ try:
         duree = time.time() - debut
         
         texte = "\n".join(resultats)
+        texte_complet.append(texte)
         print(texte)
         print(f"\n⏱️ Temps : {duree:.1f}s")
         print(f"📊 {len(resultats)} blocs détectés\n")
@@ -84,8 +84,9 @@ try:
     
 except Exception as e:
     print(f"\n❌ ERREUR : {e}")
-    # Sauvegarder le texte extrait dans un fichier
+
+# Sauvegarder le texte extrait (toutes les pages) dans un fichier
 with open("resultat_easyocr.txt", "w", encoding="utf-8") as f:
-    f.write(texte)
+    f.write("\n".join(texte_complet))
 
 print("\n✅ Résultat sauvegardé dans : resultat_easyocr.txt")

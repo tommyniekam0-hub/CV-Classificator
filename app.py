@@ -518,7 +518,8 @@ CATEGORIES = {
 DOSSIER_TRI = "CV_classes"
 DOSSIER_EXCEL = "exports"
 DOSSIER_FILTRES = "CV_filtres"
-for d in [DOSSIER_TRI, DOSSIER_EXCEL, DOSSIER_FILTRES]:
+DOSSIER_A_TRAITER = "cv_a_traiter"
+for d in [DOSSIER_TRI, DOSSIER_EXCEL, DOSSIER_FILTRES, DOSSIER_A_TRAITER]:
     os.makedirs(d, exist_ok=True)
 
 # ============================================================
@@ -972,7 +973,7 @@ class ExtracteurInfos:
         # "épouse", "mariée", "mère de"
         if re.search(r'\b(épouse|mari[ée]e|m[èe]re\s+de|elle)\b', t):
             return "Femme"
-        if re.search(r'\b(époux|mari[ée]|p[èe]re\s+de|il\s+est)\b', t):
+        if re.search(r'\b(époux|marié|p[èe]re\s+de|il\s+est)\b', t):
             return "Homme"
         
         # Sinon → RAS (prénom ambigu)
@@ -980,7 +981,8 @@ class ExtracteurInfos:
     
     def extraire_situation(self, texte):
         t = texte.lower()
-        if re.search(r'\b(mari[ée]e?|mariage)\b', t): return "Marié(e)"
+        # "mariée?" exige l'accent pour ne pas confondre avec le prénom "Marie"
+        if re.search(r'\b(mariée?|mariage)\b', t): return "Marié(e)"
         if re.search(r'\b(c[ée]libataire|c[ée]libat)\b', t): return "Célibataire"
         if re.search(r'\b(divorc[ée]e?)\b', t): return "Divorcé(e)"
         if re.search(r'\b(veuf|veuve)\b', t): return "Veuf(ve)"
@@ -1122,12 +1124,13 @@ def determiner_sexe_avec_confiance(texte, prenom="RAS"):
     t = texte.lower()
     if re.search(r'\b(madame|mme|mlle|mademoiselle)\b', t): return "Femme", 0.99
     if re.search(r'\b(monsieur|mr)\b', t): return "Homme", 0.99
-    if re.search(r'\b(elle|mari[ée]e|épouse|mère\s+de)\b', t): return "Femme", 0.85
-    if re.search(r'\b(il|mari[ée]|époux|p[èe]re\s+de)\b', t): return "Homme", 0.85
+    # Le prénom (0.90) passe avant les indices faibles (0.85)
     if prenom and prenom != "RAS":
         for p in prenom.lower().split():
             if p in ExtracteurInfos.PRENOMS_FEMININS: return "Femme", 0.90
             if p in ExtracteurInfos.PRENOMS_MASCULINS: return "Homme", 0.90
+    if re.search(r'\b(elle|mari[ée]e|épouse|mère\s+de)\b', t): return "Femme", 0.85
+    if re.search(r'\b(il|marié|époux|p[èe]re\s+de)\b', t): return "Homme", 0.85
     return "RAS", 0.0
 
 
@@ -1192,12 +1195,11 @@ def appliquer_apprentissage(infos, app):
     return infos
 
 
-def enregistrer_correction(app, champ, ancienne, nouvelle):
+def enregistrer_correction(app, champ, ancienne, nouvelle, prenom="RAS"):
     if not nouvelle or nouvelle == ancienne: return app
-    if champ == 'sexe' and ancienne != 'RAS':
-        prenom = ancienne.lower().strip()
-        if prenom:
-            app['sexe'][prenom] = nouvelle
+    # On apprend l'association prénom → sexe (clé = prénom, pas l'ancienne valeur)
+    if champ == 'sexe' and nouvelle != 'RAS' and prenom and prenom != 'RAS':
+        app.setdefault('sexe', {})[prenom.lower().strip()] = nouvelle
     app['stats']['total_corrections'] = app['stats'].get('total_corrections', 0) + 1
     sauvegarder_apprentissage(app)
     return app
@@ -1699,7 +1701,7 @@ def page_analyser():
     with col1:
         chemin_dossier = st.text_input(
             "📁 Dossier sélectionné",
-            value=os.path.abspath("cv_a_traiter"),
+            value=os.path.abspath(DOSSIER_A_TRAITER),
             key="chemin_dossier_input"
         )
     with col2:
@@ -1789,6 +1791,8 @@ def page_analyser():
                 st.session_state.resultats.append({
                     'fichier': nom, 'succes': False, 'erreur': 'Lecture impossible'
                 })
+                logs.append(f"❌ {heure} - **{nom}** → lecture impossible")
+                barre.progress((i + 1) / len(fichiers))
                 continue
             
             # Extraction
@@ -1813,7 +1817,7 @@ def page_analyser():
             
             idx = len(st.session_state.resultats)
             st.session_state.resultats.append({
-                'fichier': nom, 'succes': True,
+                'fichier': nom, 'chemin': chemin, 'succes': True,
                 'categorie': cat, 'metier': metier, 'confiance': conf,
                 'infos': infos, 'scores': scores, 'resume': resume
             })
@@ -2038,9 +2042,10 @@ def modale_correction(idx_cv):
     # Âge + Situation
     col1, col2 = st.columns(2)
     with col1:
-        age_actuel = infos.get('age', 'RAS')
-        age_def = 30 if age_actuel == 'RAS' else int(age_actuel)
-        new_age = st.number_input("Âge", min_value=16, max_value=80, value=age_def, key=f"ca_{idx_cv}")
+        age_actuel = str(infos.get('age', 'RAS'))
+        # Âge inconnu → champ vide (évite d'enregistrer un âge inventé) ; borné pour éviter une exception Streamlit
+        age_def = min(max(int(age_actuel), 15), 85) if age_actuel.isdigit() else None
+        new_age = st.number_input("Âge", min_value=15, max_value=85, value=age_def, key=f"ca_{idx_cv}")
     with col2:
         situations = ['RAS', 'Célibataire', 'Marié(e)', 'Divorcé(e)', 'Veuf(ve)']
         sit_actuelle = infos.get('situation', 'RAS')
@@ -2077,7 +2082,7 @@ def modale_correction(idx_cv):
             "Années d'expérience",
             min_value=0,
             max_value=60,
-            value=int(exp_actuelle),
+            value=min(max(int(exp_actuelle), 0), 60),
             step=1,
             key=f"cexp_{idx_cv}",
             help="Corrigez le nombre d'années d'expérience si nécessaire"
@@ -2142,7 +2147,7 @@ def modale_correction(idx_cv):
                 'email': new_email,
                 'telephone': new_tel,
                 'sexe': new_sexe,
-                'age': str(new_age),
+                'age': str(int(new_age)) if new_age is not None else 'RAS',
                 'situation': new_situation,
                 'nationalite': new_nationalite,
                 'ville': new_ville,
@@ -2156,9 +2161,9 @@ def modale_correction(idx_cv):
             
             for champ, val in corrections.items():
                 ancienne = infos.get(champ, 'RAS')
-                if ancienne != val and ancienne != 'RAS' and ancienne != 0:
+                if ancienne != val:
                     # Enregistrer pour apprentissage
-                    enregistrer_correction(st.session_state.apprentissage, champ, ancienne, val)
+                    enregistrer_correction(st.session_state.apprentissage, champ, ancienne, val, new_prenom)
                 infos[champ] = val
             
             # Compétences
@@ -2472,9 +2477,10 @@ def page_filtrer():
                     os.makedirs(chemin_dossier, exist_ok=True)
                     for r in resultats_filtres:
                         fichier_orig = r.get('fichier', '')
-                        for racine in [".", "cv_a_traiter", DOSSIER_TRI]:
-                            chemin_rech = os.path.join(racine, fichier_orig)
-                            if os.path.exists(chemin_rech):
+                        candidats = [r.get('chemin', '')] + [os.path.join(racine, fichier_orig)
+                                                             for racine in [".", DOSSIER_A_TRAITER, DOSSIER_TRI]]
+                        for chemin_rech in candidats:
+                            if chemin_rech and os.path.exists(chemin_rech):
                                 shutil.copy2(chemin_rech, os.path.join(chemin_dossier, fichier_orig))
                                 break
                     st.success(f"✅ Dossier créé : {chemin_dossier}")
@@ -2714,6 +2720,7 @@ def page_emails():
                                 # Ajouter aux résultats
                                 st.session_state.resultats.append({
                                     'fichier': pj['nom_original'],
+                                    'chemin': chemin,
                                     'succes': True,
                                     'categorie': cat,
                                     'metier': metier,
@@ -2757,8 +2764,10 @@ def page_emails():
                                     config['email'], config['mdp'], config['dossier']
                                 )
                                 gest.se_connecter()
-                                gest.deplacer_email(em['id'])
+                                ok_dep, msg_dep = gest.deplacer_email(em['id'])
                                 gest.se_deconnecter()
+                                if not ok_dep:
+                                    st.warning(f"⚠️ {msg_dep}")
                             except:
                                 pass
                             
@@ -2786,6 +2795,8 @@ def page_emails():
             if st.button("📥 Analyser TOUS les emails d'un coup", type="primary",
                          use_container_width=True, key="btn_analyser_tous"):
                 total_cv = 0
+                gest = GestionnaireEmail(serveur, port, email_address, mot_de_passe, dossier_traites)
+                gest.se_connecter()
                 for em in emails:
                     for pj in em['pieces_jointes']:
                         chemin = pj['chemin']
@@ -2805,7 +2816,7 @@ def page_emails():
                         resume = generer_resume(infos, cat, metier)
                         
                         st.session_state.resultats.append({
-                            'fichier': pj['nom_original'], 'succes': True,
+                            'fichier': pj['nom_original'], 'chemin': chemin, 'succes': True,
                             'categorie': cat, 'metier': metier, 'confiance': conf,
                             'infos': infos, 'scores': scores, 'resume': resume,
                             'source': f"📧 {em['email_expediteur']}"
@@ -2825,6 +2836,9 @@ def page_emails():
                         except:
                             pass
                         total_cv += 1
+                    # Déplacer l'email dans "CV traités" pour ne pas le retraiter
+                    gest.deplacer_email(em['id'])
+                gest.se_deconnecter()
                 
                 st.success(f"🎉 {total_cv} CV analysés et classés !")
                 st.session_state['emails_recuperes'] = []
