@@ -4,7 +4,10 @@
 from gestionnaire_email import tester_connexion
 
 # Configuration (lue depuis secrets.toml)
-import tomllib
+try:
+    import tomllib  # Python 3.11+
+except ModuleNotFoundError:
+    import tomli as tomllib  # Python < 3.11 : pip install tomli
 
 with open(".streamlit/secrets.toml", "rb") as f:
     secrets = tomllib.load(f)

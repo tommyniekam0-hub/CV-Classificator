@@ -5,6 +5,7 @@
 
 import os
 import re
+import base64
 import imaplib
 import email
 from email.header import decode_header
@@ -14,6 +15,28 @@ from pathlib import Path
 # Dossier local où on télécharge les CV
 DOSSIER_CV_EMAIL = "cv_recus_email"
 os.makedirs(DOSSIER_CV_EMAIL, exist_ok=True)
+
+
+def encoder_nom_dossier_imap(nom):
+    """Encode un nom de dossier en UTF-7 modifié (RFC 3501) et le met entre guillemets.
+    Nécessaire pour les noms avec accents ou espaces (ex: "CV traités")."""
+    resultat, tampon = [], []
+
+    def vider_tampon():
+        if tampon:
+            b64 = base64.b64encode(''.join(tampon).encode('utf-16-be')).decode('ascii')
+            resultat.append('&' + b64.rstrip('=').replace('/', ',') + '-')
+            tampon.clear()
+
+    for c in nom:
+        if 0x20 <= ord(c) <= 0x7e:
+            vider_tampon()
+            resultat.append('&-' if c == '&' else c)
+        else:
+            tampon.append(c)
+    vider_tampon()
+    encode = ''.join(resultat).replace('\\', '\\\\').replace('"', '\\"')
+    return f'"{encode}"'
 
 
 class GestionnaireEmail:
@@ -111,7 +134,8 @@ class GestionnaireEmail:
         
         try:
             self.connexion.select("INBOX")
-            status, messages = self.connexion.search(None, "ALL")
+            # UID (stable) plutôt que numéro de séquence (change après chaque déplacement)
+            status, messages = self.connexion.uid("search", None, "ALL")
             
             if status != "OK":
                 return [], "Impossible de lire la boîte"
@@ -121,8 +145,8 @@ class GestionnaireEmail:
             
             for email_id in ids_emails:
                 try:
-                    status, data = self.connexion.fetch(email_id, "(RFC822)")
-                    if status != "OK":
+                    status, data = self.connexion.uid("fetch", email_id, "(RFC822)")
+                    if status != "OK" or not data or not isinstance(data[0], tuple):
                         continue
                     
                     message = email.message_from_bytes(data[0][1])
@@ -187,13 +211,22 @@ class GestionnaireEmail:
             dossier_destination = self.dossier_traites
         
         try:
+            if not self.connexion:
+                ok, msg = self.se_connecter()
+                if not ok:
+                    return False, msg
+            # COPY/STORE exigent une boîte sélectionnée
+            self.connexion.select("INBOX")
+            dossier_imap = encoder_nom_dossier_imap(dossier_destination)
             try:
-                self.connexion.create(dossier_destination)
+                self.connexion.create(dossier_imap)
             except:
                 pass
             
-            self.connexion.copy(email_id, dossier_destination)
-            self.connexion.store(email_id, '+FLAGS', '\\Deleted')
+            status, _ = self.connexion.uid("copy", email_id, dossier_imap)
+            if status != "OK":
+                return False, f"Copie impossible vers '{dossier_destination}'"
+            self.connexion.uid("store", email_id, '+FLAGS', '(\\Deleted)')
             self.connexion.expunge()
             
             return True, f"Email déplacé dans '{dossier_destination}'"
@@ -225,7 +258,7 @@ class GestionnaireEmail:
                     return 0
             
             try:
-                status, messages = self.connexion.select(self.dossier_traites)
+                status, messages = self.connexion.select(encoder_nom_dossier_imap(self.dossier_traites), readonly=True)
                 if status == "OK":
                     return int(messages[0])
                 return 0
