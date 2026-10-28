@@ -8,21 +8,21 @@ The user interface is in French.
 
 | Page | What it does |
 |------|--------------|
-| 🏠 **Accueil** | Home / overview |
-| 📧 **Emails** | Connects to an IMAP mailbox, downloads CV attachments (`.pdf`, `.docx`, `.doc`), analyses them and moves processed emails to a `CV traités` folder |
-| 🔍 **Analyser** | Analyses every CV in a local folder (default: `cv_a_traiter/`) |
-| 📊 **Résultats** | Ranking table, per-candidate details, Excel export |
-| 🎯 **Filtrer** | Multi-criteria filters (level, sex, city, domain, job, age, experience, score, free text) + export of the selection |
-| ⚠️ **Validation** | CVs whose confidence is below the threshold, with a correction dialog |
-| 🧠 **Apprentissage** | What the app learned from your corrections (stored in `apprentissage.json`) |
-| 🤝 **Matching** | Paste a job offer and rank CVs against it |
-| ⚙️ **Paramètres** | Confidence threshold, configured domains/jobs |
+| **Accueil** | Home page, shortcut to pick a CV folder |
+| **Analyser** | Analyses every CV in a local folder (default: `cv_a_traiter/`) with live progress and log |
+| **Emails** | Connects to an IMAP mailbox, downloads CV attachments (`.pdf`, `.docx`, `.doc`), analyses them and moves processed emails to a `CV traités` folder |
+| **Résultats** | Totals, breakdown by domain, Excel export |
+| **Filtrer** | Domain, minimum experience, education level, skills, free-text search (plus sex/city/age under "Plus de critères"); export or save the selection to a folder |
+| **Validation** | Queue of low-confidence CVs: pick one of the model's suggested domains (with probabilities) or another one, and optionally learn from the decision |
+| **Apprentissage** | Measured accuracy (overall and per domain), recent corrections, retraining |
+| **Correspondance** | Paste a job offer and rank CVs against it |
+| **Paramètres** | Confidence threshold, folders, session/learning reset, configured domains |
 
 Extracted fields: name, first name, email, phone, age, sex, marital status, nationality, city, education level, school, years of experience, current position, skills, languages, certifications.
 
 ## Requirements
 
-- **Python 3.10+** recommended (3.9 works for the app itself; `test_email.py` needs `tomli` on < 3.11, installed automatically from `requirements.txt`)
+- **Python 3.10+** recommended, Streamlit 1.41+ (3.9 works for the app itself; `test_email.py` needs `tomli` on < 3.11, installed automatically from `requirements.txt`)
 - ~2 GB of free disk space if you install the optional OCR dependency (`easyocr` pulls in PyTorch)
 
 ## Getting started
@@ -92,7 +92,9 @@ All created next to `app.py` and git-ignored:
 ## Project structure
 
 ```
-app.py                       Main Streamlit application (CVSmart v11) — run this
+app.py                       Main Streamlit application — run this
+ui.py                        Design system: colours, Lucide icons, CSS, HTML components
+.streamlit/config.toml       Streamlit theme (light mode, brand colours)
 gestionnaire_email.py        IMAP client: fetch CV attachments, move processed emails
 CLASSEURS.py                 Older standalone version of the app (no email/validation pages), kept for reference
 test_email.py                Checks the IMAP connection using .streamlit/secrets.toml
@@ -108,7 +110,8 @@ apprentissage.json           Learned corrections
 2. **Information extraction** — regex/heuristics in `ExtracteurInfos` (`app.py`).
 3. **Classification** — first looks for known job titles in the top 15 lines of the CV, then anywhere in the text, then falls back to a TF-IDF + Naive Bayes model trained on the keywords of each domain in `CATEGORIES`.
 4. **Score /100** — diploma (30) + experience (40) + profile completeness (30).
-5. **Validation** — a CV goes to the Validation queue when the classification confidence is below the threshold (default 70 %) or when 2+ fields have low confidence.
+5. **Validation** — a CV goes to the Validation queue when it is unclassified, when the classification confidence is below the threshold (default 70 %) or when 2+ fields have low confidence.
+6. **Learning** — every domain you validate is recorded in `apprentissage.json` (prediction vs. your choice, used for the accuracy figures). With "Apprendre de cette décision" checked, the CV text is also added to the training data and the model is retrained (automatically if "Apprentissage automatique" is on, or with "Relancer l'apprentissage"). A CV nearly identical to one you already validated gets your domain directly.
 
 To add or tune domains and jobs, edit the `CATEGORIES` dictionary at the top of `app.py`.
 

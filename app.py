@@ -3,6 +3,7 @@
 # Toutes les fonctionnalités intégrées
 # ============================================================
 
+import io
 import os
 import re
 import json
@@ -26,16 +27,19 @@ from sklearn.feature_extraction.text import TfidfVectorizer
 from sklearn.naive_bayes import MultinomialNB
 from sklearn.pipeline import Pipeline
 from gestionnaire_email import GestionnaireEmail, tester_connexion
+import ui
+from html import escape
 
 # ============================================================
 # CONFIGURATION
 # ============================================================
 st.set_page_config(
     page_title="CVSmart - L'intelligence qui trie vos talents",
-    page_icon="📄",
+    page_icon="Logo_Cible-rh.png",
     layout="wide",
-    initial_sidebar_state="collapsed"
+    initial_sidebar_state="expanded"
 )
+VERSION_APP = "1.0"
 
 # ============================================================
 # 50 DOMAINES AVEC MÉTIERS
@@ -521,115 +525,6 @@ DOSSIER_FILTRES = "CV_filtres"
 DOSSIER_A_TRAITER = "cv_a_traiter"
 for d in [DOSSIER_TRI, DOSSIER_EXCEL, DOSSIER_FILTRES, DOSSIER_A_TRAITER]:
     os.makedirs(d, exist_ok=True)
-
-# ============================================================
-# CSS
-# ============================================================
-def inject_css():
-    st.markdown("""
-    <style>
-    @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap');
-    * { font-family: 'Inter', sans-serif; }
-    [data-testid="stSidebar"] { display: none !important; }
-    [data-testid="collapsedControl"] { display: none !important; }
-    section[data-testid="stSidebar"] { display: none !important; }
-    .stApp { background: linear-gradient(135deg, #f0f4ff 0%, #e0f7ff 50%, #f0fff4 100%); }
-    .main .block-container { max-width: 1500px !important; padding-top: 1rem !important;
-        padding-left: 2rem !important; padding-right: 2rem !important; }
-    .main-title { font-size: 2.2rem; font-weight: 900; color: #2B3F8C; margin-bottom: 0.25rem; letter-spacing: -0.5px; }
-    .main-subtitle { color: #2d4a7c; font-size: 1rem; font-weight: 500; margin-bottom: 2rem; }
-    .cvsmart-header {
-    background: linear-gradient(135deg, #2B3F8C 0%, #3A4FA8 100%);
-    border-radius: 14px;
-    padding: 1rem 1.8rem;
-    box-shadow: 0 8px 24px rgba(43,63,140,0.3);
-    margin-bottom: 1.5rem;
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    position: relative;
-    overflow: hidden; }
-.cvsmart-header::after {
-    content: '';
-    position: absolute;
-    right: -60px;
-    top: -60px;
-    width: 180px;
-    height: 180px;
-    background: #E63946;
-    transform: rotate(45deg);
-    opacity: 0.15; }
-    .cvsmart-logo-text { font-size: 1.8rem; font-weight: 900; color: white; }
-    .cvsmart-logo-sub { font-size: 0.8rem; color: rgba(255,255,255,0.95); font-weight: 500; }
-    .stButton > button { border-radius: 10px; font-weight: 700; font-size: 0.9rem;
-        padding: 0.6rem 1.2rem; transition: all 0.2s ease; }
-    .stButton > button[kind="primary"] {
-    background: linear-gradient(135deg, #E63946 0%, #C62828 100%);
-    color: white !important;
-    border: none;
-    box-shadow: 0 4px 14px rgba(230,57,70,0.4);
-}
-.stButton > button[kind="primary"]:hover {
-    transform: translateY(-2px);
-    box-shadow: 0 8px 20px rgba(230,57,70,0.5);
-}
-    .stButton > button[kind="secondary"] {
-    background: white;
-    color: #2B3F8C !important;
-    border: 2px solid #2B3F8C;
-    font-weight: 700;
-}
-.stButton > button[kind="secondary"]:hover {
-    background: #2B3F8C;
-    color: white !important;
-}
-    .stat-card { background: white; border-radius: 14px; padding: 1.3rem;
-        border: 2px solid #e0e7ff; box-shadow: 0 4px 14px rgba(43,63,14,0,0.08);
-        display: flex; justify-content: space-between; align-items: center; transition: all 0.2s ease; }
-    .stat-label { color: #1a3a6b; font-size: 0.8rem; font-weight: 700; text-transform: uppercase; }
-    .stat-value { font-size: 1.8rem; font-weight: 900; color: #2B3F8C; line-height: 1; }
-    .stat-icon { font-size: 2rem; }
-    .cat-card { background: white; border-radius: 12px; padding: 0.9rem 1.1rem;
-        border-left: 6px solid #2B3F8C; box-shadow: 0 4px 14px rgba(0,0,0,0.08);
-        display: flex; align-items: center; gap: 0.8rem; margin-bottom: 0.7rem; }
-    .cat-emoji { font-size: 1.8rem; }
-    .cat-name { font-weight: 800; color: #2B3F8C; font-size: 0.9rem; }
-    .cat-count { color: #2d4a7c; font-size: 0.85rem; font-weight: 600; }
-    .skill-tag { display: inline-block; padding: 0.4rem 0.9rem; margin: 0.25rem;
-        border-radius: 20px; background: linear-gradient(135deg, #2B3F8C 0%, #3A4FA8 100%);
-        color: white; font-size: 0.85rem; font-weight: 700; box-shadow: 0 2px 8px rgba(43,63,140,0.3); }
-    .badge-cat { display: inline-block; padding: 0.4rem 1rem; border-radius: 20px;
-        font-weight: 800; font-size: 0.8rem; color: white; }
-    .badge-metier { display: inline-block; padding: 0.35rem 0.9rem; border-radius: 20px;
-        font-weight: 700; font-size: 0.75rem; background: #FF6B00; color: white; margin-left: 0.4rem; }
-    .badge-ras { display: inline-block; padding: 0.2rem 0.6rem; border-radius: 6px;
-        background: #f0f0f0; color: #888; font-size: 0.85rem; font-weight: 600; font-style: italic; }
-    .step-box { text-align: center; padding: 1rem 0.7rem; background: white;
-        border-radius: 12px; border: 2px solid #e0e7ff; }
-    .step-icon { font-size: 2rem; margin-bottom: 0.4rem; }
-    .step-title { font-weight: 800; color: #2B3F8C; font-size: 0.8rem; }
-    .step-desc { color: #4a6fa5; font-size: 0.7rem; font-weight: 500; }
-    #MainMenu, footer, header { visibility: hidden; }
-    p, div, span, label { color: #2B3F8C; }
-    .stTextInput > div > div > input, .stTextArea > div > div > textarea {
-        background: white !important; color: #2B3F8C !important;
-        border: 2px solid #c7d7f0 !important; border-radius: 10px !important;
-        font-size: 0.95rem !important; font-weight: 500 !important;
-        padding: 0.6rem 0.8rem !important; }
-    textarea { background-color: white !important; color: #2B3F8C !important; }
-    .filter-container { background: white; border-radius: 14px; padding: 1rem;
-        border: 2px solid #e0e7ff; }
-    .filter-header { font-size: 1rem; font-weight: 800; color: #2B3F8C;
-        padding-bottom: 0.5rem; border-bottom: 2px solid #e0e7ff; margin-bottom: 1rem; }
-    .filter-group { margin-bottom: 0.9rem; padding-bottom: 0.9rem;
-        border-bottom: 1px solid #f0f0f0; }
-    .filter-group-title { font-size: 0.8rem; font-weight: 800; color: #1a3a6b;
-        text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 0.4rem; }
-    .result-item { background: white; border-radius: 12px; padding: 1.1rem;
-        border: 2px solid #e0e7ff; margin-bottom: 0.7rem; }
-    .result-item:hover { border-color: #2B3F8C; }
-    </style>
-    """, unsafe_allow_html=True)
 
 # ============================================================
 # CONSTANTES APPRENTISSAGE
@@ -1168,14 +1063,28 @@ def verifier_champs_a_valider(infos, domaine, metier, seuil):
 # ============================================================
 # MODULE : APPRENTISSAGE
 # ============================================================
+def apprentissage_vide():
+    return {'sexe': {}, 'domaines': {}, 'metiers': {},
+            'decisions': [],   # domaines validés par un humain : prédit → final
+            'exemples': [],    # textes de CV étiquetés, utilisés pour réentraîner le modèle
+            'options': {'auto': True, 'nouveau_domaine': False},
+            'stats': {'total_corrections': 0, 'derniere_maj': None, 'version_modele': 0}}
+
+
 def charger_apprentissage():
+    app = apprentissage_vide()
     if os.path.exists(FICHIER_APPRENTISSAGE):
         try:
             with open(FICHIER_APPRENTISSAGE, 'r', encoding='utf-8') as f:
-                return json.load(f)
+                donnees = json.load(f)
+            # Fusion avec les valeurs par défaut (anciens fichiers sans décisions/exemples)
+            for cle, val in donnees.items():
+                if isinstance(val, dict) and isinstance(app.get(cle), dict):
+                    app[cle].update(val)
+                else:
+                    app[cle] = val
         except: pass
-    return {'sexe': {}, 'domaines': {}, 'metiers': {},
-            'stats': {'total_corrections': 0, 'derniere_maj': None}}
+    return app
 
 
 def sauvegarder_apprentissage(app):
@@ -1205,6 +1114,46 @@ def enregistrer_correction(app, champ, ancienne, nouvelle, prenom="RAS"):
     return app
 
 
+def enregistrer_decision(app, r, final, apprendre=True):
+    """Mémorise le domaine choisi par un humain pour un CV (et l'ajoute aux exemples d'entraînement)"""
+    predit = r.get('categorie_predite', r.get('categorie', 'Non classé'))
+    app['decisions'].append({'date': datetime.now().isoformat(timespec='seconds'),
+                             'fichier': r.get('fichier', ''), 'predit': predit, 'final': final})
+    if predit != final:
+        app['stats']['total_corrections'] = app['stats'].get('total_corrections', 0) + 1
+    texte = r.get('infos', {}).get('texte_brut', '')[:4000]
+    if apprendre and final != 'Non classé' and texte.strip():
+        app['exemples'].append({'texte': texte, 'domaine': final})
+    sauvegarder_apprentissage(app)
+
+
+def stats_decisions(app):
+    """Précision du modèle mesurée sur les décisions humaines"""
+    decisions = app.get('decisions', [])
+    aujourd_hui = datetime.now().date().isoformat()
+    corrections = [d for d in decisions if d['predit'] != d['final']]
+    par_domaine = {}
+    for d in decisions:
+        if d['predit'] == 'Non classé': continue
+        ok, n = par_domaine.get(d['predit'], (0, 0))
+        par_domaine[d['predit']] = (ok + (d['predit'] == d['final']), n + 1)
+    confusions = {}
+    for d in corrections:
+        if d['predit'] != 'Non classé':
+            paire = (d['final'], d['predit'])
+            confusions[paire] = confusions.get(paire, 0) + 1
+    return {
+        'nb_decisions': len(decisions),
+        'precision': (100 * (len(decisions) - len(corrections)) / len(decisions)) if decisions else None,
+        'corrections': len(corrections),
+        'corrections_jour': sum(1 for d in corrections if d['date'].startswith(aujourd_hui)),
+        'par_domaine': sorted(((dom, 100 * ok / n, n) for dom, (ok, n) in par_domaine.items()),
+                              key=lambda x: x[1], reverse=True),
+        'confusion': max(confusions, key=confusions.get) if confusions else None,
+        'recentes': corrections[-5:][::-1],
+    }
+
+
 def get_stats_apprentissage(app):
     return {
         'sexe_appris': len(app.get('sexe', {})),
@@ -1220,8 +1169,10 @@ def get_stats_apprentissage(app):
 class Classificateur:
     def __init__(self):
         self.pipeline = None
+        self.exemples = []
+        self.matrice_exemples = None
     
-    def entrainer(self):
+    def entrainer(self, exemples=None):
         textes, labels = [], []
         for cat, data in CATEGORIES.items():
             if cat == 'Non classé': continue
@@ -1238,12 +1189,44 @@ class Classificateur:
                                       ngram_range=(1, 2), min_df=1, sublinear_tf=True)),
             ('clf', MultinomialNB(alpha=0.05))
         ])
+        # CV validés par un humain (comptent triple face aux mots-clés génériques)
+        exemples = exemples or []
+        for ex in exemples:
+            textes.extend([ex['texte']] * 3)
+            labels.extend([ex['domaine']] * 3)
         self.pipeline.fit(textes, labels)
+        self.exemples = exemples
+        self.matrice_exemples = (self.pipeline.named_steps['tfidf'].transform([ex['texte'] for ex in exemples])
+                                 if exemples else None)
+    
+    def exemple_proche(self, texte, seuil=0.75):
+        """Domaine d'un CV déjà validé quasi identique (même candidat, CV renvoyé…)"""
+        if self.matrice_exemples is None: return None
+        similarites = (self.matrice_exemples @ self.pipeline.named_steps['tfidf'].transform([texte]).T).toarray().ravel()
+        meilleur = int(np.argmax(similarites))
+        if similarites[meilleur] >= seuil:
+            return self.exemples[meilleur]['domaine'], float(similarites[meilleur])
+        return None
+    
+    def suggerer(self, texte, n=3):
+        """Les n domaines les plus probables selon le modèle : [(domaine, probabilité)]"""
+        if not self.pipeline: self.entrainer()
+        try:
+            probas = self.pipeline.predict_proba([re.sub(r'\s+', ' ', texte.lower())])[0]
+        except Exception:
+            return []
+        classes = self.pipeline.classes_
+        return [(classes[i], float(probas[i])) for i in np.argsort(probas)[::-1][:n]]
     
     def classifier(self, texte):
         if not self.pipeline: self.entrainer()
         t = texte.lower()
         if len(t) < 20: return 'Non classé', 'RAS', 0.0
+        
+        # 0. Un CV quasi identique a déjà été validé par un humain
+        proche = self.exemple_proche(texte)
+        if proche:
+            return proche[0], 'RAS', proche[1]
         
         # 1. Chercher LE POSTE dans les 15 premières lignes
         lignes = [l.strip() for l in texte.split('\n') if l.strip()]
@@ -1406,8 +1389,8 @@ def lire_cv(chemin):
 # ============================================================
 # EXPORT EXCEL
 # ============================================================
-def exporter_excel(resultats, nom_fichier=None):
-    if not resultats: return None
+def excel_octets(resultats):
+    """Classeur Excel des CV analysés, en mémoire (None si aucun CV lisible)"""
     data = []
     for r in resultats:
         if not r.get('succes'): continue
@@ -1433,17 +1416,30 @@ def exporter_excel(resultats, nom_fichier=None):
             'Score Expérience': s['experience'], 'Score Complétude': s['completude'],
             'Résumé': r.get('resume', '')
         })
+    if not data: return None
     df = pd.DataFrame(data).sort_values('Score Total', ascending=False)
     df.insert(0, 'Rang', range(1, len(df) + 1))
-    if not nom_fichier:
-        nom_fichier = f"CVSmart_export_{datetime.now().strftime('%Y%m%d_%H%M%S')}.xlsx"
-    chemin = os.path.join(DOSSIER_EXCEL, nom_fichier)
-    with pd.ExcelWriter(chemin, engine='openpyxl') as w:
+    tampon = io.BytesIO()
+    with pd.ExcelWriter(tampon, engine='openpyxl') as w:
         df.to_excel(w, sheet_name='CV', index=False)
         ws = w.sheets['CV']
         for col in ws.columns:
             m = max(len(str(c.value)) if c.value else 0 for c in col)
             ws.column_dimensions[col[0].column_letter].width = min(m + 2, 50)
+    return tampon.getvalue()
+
+
+def nom_export(prefixe="CVSmart_export"):
+    return f"{prefixe}_{datetime.now().strftime('%Y%m%d_%H%M%S')}.xlsx"
+
+
+def exporter_excel(resultats, nom_fichier=None):
+    """Enregistre l'export Excel dans le dossier exports/ et renvoie son chemin"""
+    donnees = excel_octets(resultats)
+    if not donnees: return None
+    chemin = os.path.join(DOSSIER_EXCEL, nom_fichier or nom_export())
+    with open(chemin, 'wb') as f:
+        f.write(donnees)
     return chemin
 
 # ============================================================
@@ -1493,9 +1489,9 @@ def generer_resume(infos, categorie, metier="RAS"):
     return f"{p1} {p2} {p3}".strip()
 
 # ============================================================
-# INIT SESSION
+# CHARGEMENT DES MODÈLES
 # ============================================================
-@st.cache_resource
+@st.cache_resource(show_spinner=False)
 def charger_easyocr():
     try:
         import easyocr
@@ -1503,1415 +1499,1014 @@ def charger_easyocr():
     except: return None
 
 
-@st.cache_resource
-def charger_classificateur():
+@st.cache_resource(show_spinner=False)
+def charger_classificateur(_exemples=(), version=0):
+    # _exemples n'est pas haché par Streamlit : la clé de cache est "version"
     classif = Classificateur()
-    classif.entrainer()
+    classif.entrainer(list(_exemples))
     return classif
 
 
+def reentrainer_classificateur():
+    app = st.session_state.apprentissage
+    app['stats']['version_modele'] = app['stats'].get('version_modele', 0) + 1
+    sauvegarder_apprentissage(app)
+    st.session_state.classif = charger_classificateur(app['exemples'], app['stats']['version_modele'])
+
+# ============================================================
+# SESSION ET NAVIGATION
+# ============================================================
+PAGES = [
+    ("Accueil", "nav_accueil"),
+    ("Analyser", "nav_analyser"),
+    ("Emails", "nav_emails"),
+    ("Résultats", "nav_resultats"),
+    ("Filtrer", "nav_filtrer"),
+    ("Validation", "nav_validation"),
+    ("Apprentissage", "nav_apprentissage"),
+    ("Correspondance", "nav_correspondance"),
+    ("Paramètres", "nav_parametres"),
+]
+
+
 def init_session():
+    if 'apprentissage' not in st.session_state:
+        st.session_state.apprentissage = charger_apprentissage()
     if 'classif' not in st.session_state:
-        with st.spinner("🚀 Initialisation..."):
-            st.session_state.classif = charger_classificateur()
+        app = st.session_state.apprentissage
+        with st.spinner("Initialisation du modèle..."):
+            st.session_state.classif = charger_classificateur(app['exemples'], app['stats'].get('version_modele', 0))
     if 'extract' not in st.session_state:
         st.session_state.extract = ExtracteurInfos()
     if 'easyocr_reader' not in st.session_state:
         st.session_state.easyocr_reader = charger_easyocr()
-    if 'resultats' not in st.session_state:
-        st.session_state.resultats = []
-    if 'page_active' not in st.session_state:
-        st.session_state.page_active = "Accueil"
-    if 'apprentissage' not in st.session_state:
-        st.session_state.apprentissage = charger_apprentissage()
-    if 'cv_a_valider' not in st.session_state:
-        st.session_state.cv_a_valider = []
-    if 'seuil_confiance' not in st.session_state:
-        st.session_state.seuil_confiance = SEUIL_CONFIANCE_DEFAUT
-        # ============================================================
-# MENU
-# ============================================================
-def afficher_menu():
-    st.markdown("""
-    <div class="cvsmart-header">
-        <div style="display: flex; align-items: center; gap: 1rem;">
-            <div style="font-size: 2.5rem;">📄</div>
-            <div>
-                <div class="cvsmart-logo-text">CVSmart</div>
-                <div class="cvsmart-logo-sub">L'intelligence qui trie vos talents</div>
-            </div>
-        </div>
-        <div style="color: white; font-weight: 700; font-size: 1rem;">v11.0</div>
-    </div>
-    """, unsafe_allow_html=True)
-    
-    if st.session_state.get('resultats'):
-        nb_total = len(st.session_state.resultats)
-        nb_ok = sum(1 for r in st.session_state.resultats if r.get('succes'))
-        nb_valider = len(st.session_state.cv_a_valider)
-        nb_appris = st.session_state.apprentissage['stats']['total_corrections']
-        st.markdown(f"""
-        <div style="display: flex; justify-content: flex-end; gap: 1.5rem;
-                    padding: 0.5rem 1rem; margin-bottom: 0.5rem;">
-            <span style="color:#1a3a6b; font-size:0.9rem; font-weight:600;">
-                📄 <b style="color:#2B3F8C;">{nb_total}</b>
-            </span>
-            <span style="color:#1a3a6b; font-size:0.9rem; font-weight:600;">
-                ✅ <b style="color:#E63946;">{nb_ok - nb_valider}</b>
-            </span>
-            <span style="color:#1a3a6b; font-size:0.9rem; font-weight:600;">
-                ⚠️ <b style="color:#FF6B00;">{nb_valider}</b>
-            </span>
-            <span style="color:#1a3a6b; font-size:0.9rem; font-weight:600;">
-                🧠 <b style="color:#8B00FF;">{nb_appris}</b>
-            </span>
-        </div>
-        """, unsafe_allow_html=True)
-    
-    pages = [
-        ("🏠 Accueil", "Accueil"),
-        ("📧 Emails", "Emails"),
-        ("🔍 Analyser", "Analyser"),
-        ("📊 Résultats", "Résultats"),
-        ("🎯 Filtrer", "Filtrer"),
-        ("⚠️ Validation", "Validation"),
-        ("🧠 Apprentissage", "Apprentissage"),
-        ("🤝 Matching", "Matching"),
-        ("⚙️ Paramètres", "Paramètres"),
-    ]
-    
-    cols = st.columns(len(pages))
-    for i, (label, page_name) in enumerate(pages):
-        with cols[i]:
-            is_active = st.session_state.page_active == page_name
-            btn_type = "primary" if is_active else "secondary"
-            # Badge pour validation
-            affichage_label = label
-            if page_name == "Validation" and st.session_state.cv_a_valider:
-                affichage_label = f"{label} ({len(st.session_state.cv_a_valider)})"
-            if st.button(affichage_label, key=f"nav_{page_name}",
-                         use_container_width=True, type=btn_type):
-                st.session_state.page_active = page_name
-                st.rerun()
-    
-    st.markdown("<hr style='border:none; border-top:2px solid #e0e7ff; margin:1rem 0;'>",
-                unsafe_allow_html=True)
-    return st.session_state.page_active
+    defauts = {
+        'resultats': [], 'cv_a_valider': [], 'cv_corriges': [], 'journal': [],
+        'page_active': "Accueil", 'seuil_confiance': SEUIL_CONFIANCE_DEFAUT,
+        'chemin_dossier': os.path.abspath(DOSSIER_A_TRAITER), 'edition_dossier': False,
+        'derniere_analyse': None, 'validation_sel': None, 'flash': None,
+    }
+    for cle, val in defauts.items():
+        if cle not in st.session_state:
+            st.session_state[cle] = val
 
+
+def aller_a(page):
+    st.session_state.page_active = page
+
+
+def flash(texte, ton='vert', icone_nom='valide'):
+    """Message affiché en haut de la page au prochain affichage (survit à st.rerun)"""
+    st.session_state.flash = (texte, ton, icone_nom)
+
+
+def afficher_menu():
+    with st.sidebar:
+        ui.afficher(f'<div class="cv-marque">{ui.LOGO_CIBLE}<div><div class="cv-marque-nom">CIBLE RH</div>'
+                    f'<div class="cv-marque-sous">Emploi</div></div></div>')
+        for page, cle in PAGES:
+            actif = st.session_state.page_active == page
+            st.button(page, key=cle, type="primary" if actif else "secondary",
+                      use_container_width=True, on_click=aller_a, args=(page,))
+        ui.afficher(f'<div class="cv-pied">CVSmart v{VERSION_APP}<br>CIBLE RH Emploi</div>')
+
+# ============================================================
+# OUTILS COMMUNS AUX PAGES
+# ============================================================
+EXTENSIONS_CV = ('.pdf', '.docx', '.doc')
+
+
+def lister_cv(dossier):
+    if not os.path.isdir(dossier): return []
+    return sorted(f for f in os.listdir(dossier) if f.lower().endswith(EXTENSIONS_CV))
+
+
+def nom_dossier(texte):
+    return texte.replace(" ", "_").replace("/", "-")
+
+
+def nom_court(infos):
+    """« Marie N. » comme sur les maquettes"""
+    prenom, nom = infos.get('prenom', 'RAS'), infos.get('nom', 'RAS')
+    if prenom != 'RAS' and nom != 'RAS': return f"{prenom} {nom[0].upper()}."
+    if prenom != 'RAS': return prenom
+    if nom != 'RAS': return nom.capitalize()
+    return "Candidat inconnu"
+
+
+def texte_experience(annees):
+    if not annees: return "< 1 an"
+    return f"{annees} an{'s' if annees > 1 else ''}"
+
+
+def analyser_cv(chemin, nom, source=None, copie_nom=None, sous_dossier_metier=False):
+    """Lit, extrait, classe un CV et l'ajoute aux résultats. Renvoie le résultat."""
+    texte = lire_cv(chemin)
+    if not texte or not texte.strip():
+        r = {'fichier': nom, 'chemin': chemin, 'succes': False, 'erreur': 'Lecture impossible'}
+        st.session_state.resultats.append(r)
+        return r
+
+    infos = st.session_state.extract.extraire_tout(texte)
+    age_calcule, _ = calculer_age_depuis_annee(texte)
+    if age_calcule != "RAS":
+        infos['age'] = age_calcule
+    infos['sexe'], _ = determiner_sexe_avec_confiance(texte, infos.get('prenom', 'RAS'))
+    infos = appliquer_apprentissage(infos, st.session_state.apprentissage)
+
+    cat, metier, conf = st.session_state.classif.classifier(texte)
+    cat, metier, conf = str(cat), str(metier), float(conf)
+
+    # Copie dans le dossier du domaine (et du métier pour les CV reçus par email)
+    dest = os.path.join(DOSSIER_TRI, nom_dossier(cat))
+    if sous_dossier_metier:
+        dest = os.path.join(dest, nom_dossier(metier) if metier != "RAS" else "_Non_renseigné")
+    os.makedirs(dest, exist_ok=True)
+    copie = os.path.join(dest, copie_nom or nom)
+    try: shutil.copy2(chemin, copie)
+    except: copie = None
+
+    r = {'fichier': nom, 'chemin': chemin, 'copie': copie, 'succes': True,
+         'categorie': cat, 'categorie_predite': cat, 'metier': metier, 'confiance': conf,
+         'infos': infos, 'scores': calculer_score(infos), 'resume': generer_resume(infos, cat, metier)}
+    if source:
+        r['source'] = source
+    st.session_state.resultats.append(r)
+
+    champs_faibles = verifier_champs_a_valider(infos, cat, metier, st.session_state.seuil_confiance)
+    r['a_valider'] = bool(cat == 'Non classé' or conf < st.session_state.seuil_confiance / 100 or len(champs_faibles) >= 2)
+    if r['a_valider']:
+        st.session_state.cv_a_valider.append(len(st.session_state.resultats) - 1)
+    return r
+
+
+def changer_domaine(r, domaine):
+    """Applique un nouveau domaine à un résultat et déplace sa copie classée"""
+    if domaine == r['categorie']: return
+    r['categorie'] = domaine
+    if r.get('metier') not in CATEGORIES.get(domaine, {}).get('metiers', {}):
+        r['metier'] = 'RAS'
+    r['resume'] = generer_resume(r['infos'], domaine, r['metier'])
+    if r.get('copie') and os.path.exists(r['copie']):
+        dest = os.path.join(DOSSIER_TRI, nom_dossier(domaine))
+        os.makedirs(dest, exist_ok=True)
+        try:
+            nouvelle = os.path.join(dest, os.path.basename(r['copie']))
+            shutil.move(r['copie'], nouvelle)
+            r['copie'] = nouvelle
+        except: pass
+
+
+def bouton_export(libelle, resultats, cle, prefixe="CVSmart_export"):
+    """Bouton de téléchargement Excel (une copie est aussi enregistrée dans exports/)"""
+    donnees = excel_octets(resultats)
+    nom = nom_export(prefixe)
+
+    def sauvegarder():
+        with open(os.path.join(DOSSIER_EXCEL, nom), 'wb') as f:
+            f.write(donnees)
+
+    st.download_button(libelle, data=donnees or b"", file_name=nom, key=cle, type="primary",
+                       mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+                       disabled=not donnees, use_container_width=True,
+                       on_click=sauvegarder if donnees else None)
+
+
+def etat_vide(texte, libelle_bouton=None, page=None):
+    ui.message(texte, 'bleu', 'boite')
+    if libelle_bouton:
+        st.button(libelle_bouton, key=f"vide_{page}", type="primary", on_click=aller_a, args=(page,))
 
 # ============================================================
 # PAGE ACCUEIL
 # ============================================================
+def ouvrir_selection_dossier():
+    st.session_state.page_active = "Analyser"
+    st.session_state.edition_dossier = True
+    st.session_state.saisie_dossier = st.session_state.chemin_dossier
+
+
 def page_accueil():
-    st.markdown('<div class="main-title">Bienvenue sur CVSmart</div>', unsafe_allow_html=True)
-    st.markdown('<div class="main-subtitle">Classez, filtrez et exportez vos CV. L\'IA apprend de vos corrections.</div>', unsafe_allow_html=True)
-    
-    col1, col2, col3 = st.columns([1, 2, 1])
-    with col2:
-        st.markdown("""
-        <div style="background: linear-gradient(135deg, #2B3F8C 0%, #3A4FA8 100%);
-                    border-radius: 20px; padding: 2.5rem; text-align: center;
-                    box-shadow: 0 12px 32px rgba(43,63,140,0.3); margin: 1rem 0;">
-            <div style="font-size: 4rem; margin-bottom: 1rem;">📄</div>
-            <h1 style="color: white; margin: 0; font-weight: 900; font-size: 2.5rem;">CVSmart</h1>
-            <p style="color: rgba(255,255,255,0.95); margin-top: 0.5rem;
-                      font-size: 1.1rem; font-weight: 600;">L'intelligence qui trie vos talents</p>
-            <p style="color: rgba(255,255,255,0.85); font-size: 0.9rem; margin-top: 1rem;">
-                50 domaines · 250+ métiers · Apprentissage IA
-            </p>
-        </div>
-        """, unsafe_allow_html=True)
-    
-    c1, c2, c3 = st.columns(3)
-    with c1:
-        st.markdown("""
-        <div class="stat-card"><div>
-            <div class="stat-label">⚡ Rapide</div>
-            <div style="color:#1a3a6b; font-size:0.85rem; font-weight:600;">Analyse optimisée</div>
-        </div><div class="stat-icon">⚡</div></div>
-        """, unsafe_allow_html=True)
-    with c2:
-        st.markdown("""
-        <div class="stat-card"><div>
-            <div class="stat-label">🎯 Précis</div>
-            <div style="color:#1a3a6b; font-size:0.85rem; font-weight:600;">Domaine + Métier + Confiance</div>
-        </div><div class="stat-icon">🎯</div></div>
-        """, unsafe_allow_html=True)
-    with c3:
-        st.markdown("""
-        <div class="stat-card"><div>
-            <div class="stat-label">🧠 Intelligent</div>
-            <div style="color:#1a3a6b; font-size:0.85rem; font-weight:600;">Apprend de vos corrections</div>
-        </div><div class="stat-icon">🧠</div></div>
-        """, unsafe_allow_html=True)
-    
-    st.markdown("---")
-    st.markdown("### 🚀 Comment ça marche")
-    
-    etapes = [
-        ("📂", "1. Import", "Sélection des CV"),
-        ("📄", "2. Extraction", "Lecture + OCR"),
-        ("🧠", "3. Analyse", "25+ infos"),
-        ("🎯", "4. Classification", "Domaine + Métier"),
-        ("⚠️", "5. Validation", "Si confiance faible"),
-        ("📊", "6. Export", "Excel + Dossiers")
-    ]
-    cols = st.columns(6)
-    for col, (icon, t, d) in zip(cols, etapes):
-        with col:
-            st.markdown(f"""
-            <div class="step-box">
-                <div class="step-icon">{icon}</div>
-                <div class="step-title">{t}</div>
-                <div class="step-desc">{d}</div>
-            </div>
-            """, unsafe_allow_html=True)
-    
-    st.markdown("---")
-    col1, col2, col3 = st.columns([1, 2, 1])
-    with col2:
-        st.markdown("""
-        <div style="background: linear-gradient(135deg, #2B3F8C 0%, #1e3a6b 100%);
-                    color: white; border-radius: 16px; padding: 1.5rem; text-align: center;">
-            <div style="font-size: 1.8rem; margin-bottom: 0.5rem;">🧠</div>
-            <div style="font-weight: 800; font-size: 1.1rem;">
-                L'IA apprend de vos corrections et s'améliore à chaque utilisation
-            </div>
-        </div>
-        """, unsafe_allow_html=True)
+    B, R = ui.BLEU, ui.ROUGE
+    ui.afficher('<div class="cv-coin"></div>')
+    _, centre, _ = st.columns([1, 4.6, 1])
+    with centre:
+        ui.afficher(f'''<div class="cv-hero">
+            <div class="cv-hero-logo">{ui.LOGO_CVSMART}<div class="cv-hero-nom"><span style="color:{B}">CV</span><span style="color:{R}">Smart</span></div></div>
+            <div class="cv-hero-accroche">L'intelligence qui trie vos talents</div>
+            <div class="cv-hero-texte">Classez automatiquement vos CV par domaine professionnel en quelques clics.</div>
+        </div>''')
+        _, b, _ = st.columns([1, 2, 1])
+        with b:
+            st.button("Sélectionner un dossier de CV", key="btn_accueil_dossier", type="primary",
+                      use_container_width=True, on_click=ouvrir_selection_dossier)
+        ui.afficher('<div class="cv-muted" style="text-align:center;margin-top:-0.4rem">Formats acceptés : PDF, DOCX, DOC</div>')
 
+        atouts = [('eclair', 'Rapide', 'Analyse en quelques secondes', R),
+                  ('cible', 'Précis', 'Classification par domaine', B),
+                  ('bouclier', 'Simple', 'Interface intuitive', B)]
+        ui.afficher('<div class="cv-atouts" style="margin-top:1.4rem">' + ''.join(
+            f'<div>{ui.icone(ic, 24, coul)}<div class="cv-atout-titre" style="color:{coul}">{t}</div>'
+            f'<div class="cv-muted">{d}</div></div>' for ic, t, d, coul in atouts) + '</div>')
+
+        ui.afficher('<div class="cv-label" style="margin:1.3rem 0 -0.3rem 0">Nouveaux outils</div>')
+        outils = [("Filtrer", "Affiner par domaine, expérience, compétences"),
+                  ("Validation", "Confirmer ou corriger les classements"),
+                  ("Apprentissage", "Améliorer le tri grâce à vos corrections"),
+                  ("Correspondance", "Comparer les CV à une offre d'emploi")]
+        for col, (page, texte) in zip(st.columns(4), outils):
+            with col, st.container(key=f"clic_outil_{page.lower()}"):
+                ui.afficher(f'<div class="cv-outil"><div class="cv-outil-titre">{page}</div>'
+                            f'<div class="cv-outil-texte">{texte}</div></div>')
+                st.button(f"Ouvrir {page}", key=f"outil_{page.lower()}", on_click=aller_a, args=(page,))
 
 # ============================================================
-# PAGE ANALYSER (V2 avec système de confiance)
+# PAGE ANALYSER
 # ============================================================
+def basculer_edition_dossier():
+    if st.session_state.edition_dossier:
+        saisie = st.session_state.get('saisie_dossier', '').strip()
+        if saisie:
+            st.session_state.chemin_dossier = saisie
+            st.session_state.derniere_analyse = None
+    else:
+        st.session_state.saisie_dossier = st.session_state.chemin_dossier
+    st.session_state.edition_dossier = not st.session_state.edition_dossier
+
+
+def rendu_progression(total, termines, journal, en_cours=False):
+    restants = total - termines if en_cours else 0
+    cartes = ui.grille([
+        ui.carte_stat("Nombre de CV", total, icone_nom='fichier', ton='rose'),
+        ui.carte_stat("En cours d'analyse", restants, icone_nom='horloge', ton='bleu'),
+        ui.carte_stat("Terminés", termines, icone_nom='valide', ton='vert'),
+    ], 3)
+    pct = 100 * termines / total if total else 0
+    progression = (f'<div class="cv-carte" style="margin-top:1.2rem"><div style="display:flex;justify-content:space-between">'
+                   f'<span class="cv-h3" style="margin:0">Progression</span>'
+                   f'<span class="cv-muted" style="font-weight:700">{termines} / {total}</span></div>'
+                   f'<div class="cv-progression"><div style="width:{pct:.1f}%"></div></div></div>')
+    if journal:
+        lignes = ''.join(
+            f'<div class="cv-ligne"><span class="cv-heure">{e["heure"]}</span><span class="cv-msg">{e["html"]}</span>'
+            f'{"<span class=cv-spinner></span>" if e.get("en_cours") else ""}</div>'
+            for e in reversed(journal[-60:]))
+    else:
+        lignes = ('<div class="cv-muted" style="margin:auto;text-align:center">Aucune analyse pour le moment. '
+                  'Cliquez sur « Lancer l\'analyse » pour classer les CV du dossier.</div>')
+    return f'{cartes}{progression}<div class="cv-carte cv-journal" style="margin-top:1.2rem">{lignes}</div>'
+
+
 def page_analyser():
-    st.markdown('<div class="main-title">Analyse et classement des CV</div>', unsafe_allow_html=True)
-    st.markdown('<div class="main-subtitle">Sélectionnez un dossier contenant vos CV.</div>', unsafe_allow_html=True)
-    
-    with st.expander("⚙️ Configuration du seuil de confiance", expanded=False):
-        st.session_state.seuil_confiance = st.slider(
-            "Seuil de confiance pour classement automatique (%)",
-            min_value=30, max_value=95,
-            value=st.session_state.seuil_confiance,
-            help="En dessous de ce seuil, l'app vous demandera de valider"
-        )
-        st.info(f"📊 Seuil actuel : **{st.session_state.seuil_confiance}%**")
-    
-    col1, col2 = st.columns([4, 1])
-    with col1:
-        chemin_dossier = st.text_input(
-            "📁 Dossier sélectionné",
-            value=os.path.abspath(DOSSIER_A_TRAITER),
-            key="chemin_dossier_input"
-        )
-    with col2:
-        st.markdown("<br>", unsafe_allow_html=True)
-        st.button("Changer", use_container_width=True, type="secondary", key="btn_changer")
-    
-    if st.session_state.resultats:
-        nb_total = len(st.session_state.resultats)
-        nb_ok = sum(1 for r in st.session_state.resultats if r.get('succes'))
-        nb_valider = len(st.session_state.cv_a_valider)
-        
-        c1, c2, c3, c4 = st.columns(4)
+    ui.entete("Analyse et classement des CV")
+    chemin_dossier = st.session_state.chemin_dossier
+
+    with st.container(key="carte_dossier"):
+        c1, c2, c3 = st.columns([5, 1.2, 1.7], vertical_alignment="center")
         with c1:
-            st.markdown(f"""
-            <div class="stat-card"><div>
-                <div class="stat-label">📄 Total</div>
-                <div class="stat-value">{nb_total}</div>
-            </div><div class="stat-icon">📄</div></div>
-            """, unsafe_allow_html=True)
+            if st.session_state.edition_dossier:
+                st.text_input("Dossier sélectionné", key="saisie_dossier")
+            else:
+                ui.afficher(f'<div class="cv-h3" style="margin-bottom:0.2rem">Dossier sélectionné</div>'
+                            f'<div style="font-family:ui-monospace,Menlo,monospace;color:#3A4357;word-break:break-all">'
+                            f'{escape(chemin_dossier)}</div>')
         with c2:
-            st.markdown(f"""
-            <div class="stat-card"><div>
-                <div class="stat-label">✅ Auto</div>
-                <div class="stat-value" style="color:#E63946;">{nb_ok - nb_valider}</div>
-            </div><div class="stat-icon">✅</div></div>
-            """, unsafe_allow_html=True)
+            st.button("Valider" if st.session_state.edition_dossier else "Changer", key="btn_changer",
+                      use_container_width=True, on_click=basculer_edition_dossier)
         with c3:
-            st.markdown(f"""
-            <div class="stat-card"><div>
-                <div class="stat-label">⚠️ À valider</div>
-                <div class="stat-value" style="color:#FF6B00;">{nb_valider}</div>
-            </div><div class="stat-icon">⚠️</div></div>
-            """, unsafe_allow_html=True)
-        with c4:
-            st.markdown(f"""
-            <div class="stat-card"><div>
-                <div class="stat-label">🧠 Appris</div>
-                <div class="stat-value" style="color:#8B00FF;">{st.session_state.apprentissage['stats']['total_corrections']}</div>
-            </div><div class="stat-icon">🧠</div></div>
-            """, unsafe_allow_html=True)
-    
-    st.markdown("---")
-    c1, c2, c3 = st.columns([1, 1, 2])
-    with c1:
-        lancer = st.button("🚀 Lancer l'analyse", type="primary", use_container_width=True, key="btn_lancer")
-    with c2:
-        vider = st.button("🗑️ Vider la session", use_container_width=True, type="secondary", key="btn_vider")
-    
-    if vider:
-        st.session_state.resultats = []
-        st.session_state.cv_a_valider = []
-        st.rerun()
-    
+            lancer = st.button("Lancer l'analyse", type="primary", key="btn_lancer", use_container_width=True,
+                               disabled=st.session_state.edition_dossier)
+
+    fichiers = lister_cv(chemin_dossier)
+    zone = st.empty()
+
     if lancer:
         if not os.path.isdir(chemin_dossier):
-            st.error(f"❌ Dossier introuvable : {chemin_dossier}")
+            ui.message(f"Dossier introuvable : {escape(chemin_dossier)}", 'rose', 'erreur')
             return
-        
-        fichiers = [f for f in os.listdir(chemin_dossier)
-                    if f.lower().endswith(('.pdf', '.docx', '.doc'))]
         if not fichiers:
-            st.warning(f"⚠️ Aucun CV dans {chemin_dossier}")
+            ui.message(f"Aucun CV (PDF, DOCX, DOC) dans {escape(chemin_dossier)}", 'ambre', 'alerte')
             return
-        
-        st.info(f"📊 {len(fichiers)} CV trouvés. Analyse en cours...")
-        barre = st.progress(0)
-        journal = st.empty()
-        temps_estime = st.empty()
-        logs = []
-        temps_par_cv = []
-        
+        journal = st.session_state.journal = []
+        total = len(fichiers)
         for i, nom in enumerate(fichiers):
-            chemin = os.path.join(chemin_dossier, nom)
-            heure = datetime.now().strftime("%H:%M:%S")
-            logs.append(f"🔄 {heure} - **{nom}**...")
-            journal.markdown("  \n".join(logs[-5:]))
-            
-            if temps_par_cv:
-                moyenne = sum(temps_par_cv) / len(temps_par_cv)
-                restant = moyenne * (len(fichiers) - i)
-                temps_estime.info(f"⏱️ Temps estimé : **{int(restant)}s**")
-            
-            debut_cv = datetime.now()
-            
-            texte = lire_cv(chemin)
-            if not texte:
-                st.session_state.resultats.append({
-                    'fichier': nom, 'succes': False, 'erreur': 'Lecture impossible'
-                })
-                logs.append(f"❌ {heure} - **{nom}** → lecture impossible")
-                barre.progress((i + 1) / len(fichiers))
+            journal.append({'heure': datetime.now().strftime("%H:%M"), 'html': f"Analyse de {escape(nom)} ...", 'en_cours': True})
+            zone.html(rendu_progression(total, i, journal, en_cours=True))
+            r = analyser_cv(os.path.join(chemin_dossier, nom), nom)
+            journal[-1]['en_cours'] = False
+            heure = datetime.now().strftime("%H:%M")
+            if not r['succes']:
+                journal.append({'heure': heure, 'html': f'<span style="color:{ui.ROUGE}">Lecture impossible : {escape(nom)}</span>'})
                 continue
-            
-            # Extraction
-            infos = st.session_state.extract.extraire_tout(texte)
-            
-            # Âge amélioré
-            age_calculé, conf_age = calculer_age_depuis_annee(texte)
-            if age_calculé != "RAS":
-                infos['age'] = age_calculé
-            
-            # Sexe amélioré
-            sexe_calculé, conf_sexe = determiner_sexe_avec_confiance(texte, infos.get('prenom', 'RAS'))
-            infos['sexe'] = sexe_calculé
-            
-            # Apprentissage
-            infos = appliquer_apprentissage(infos, st.session_state.apprentissage)
-            
-            # Classification
-            cat, metier, conf = st.session_state.classif.classifier(texte)
-            scores = calculer_score(infos)
-            resume = generer_resume(infos, cat, metier)
-            
-            idx = len(st.session_state.resultats)
-            st.session_state.resultats.append({
-                'fichier': nom, 'chemin': chemin, 'succes': True,
-                'categorie': cat, 'metier': metier, 'confiance': conf,
-                'infos': infos, 'scores': scores, 'resume': resume
-            })
-            
-            # Vérifier si validation nécessaire
-            seuil = st.session_state.seuil_confiance / 100
-            champs_faibles = verifier_champs_a_valider(infos, cat, metier, st.session_state.seuil_confiance)
-            
-            if conf < seuil or len(champs_faibles) >= 2:
-                st.session_state.cv_a_valider.append(idx)
-                logs.append(f"⚠️ {heure} - **{nom}** → {cat} > {metier} (À VALIDER)")
-            else:
-                logs.append(f"✅ {heure} - **{nom}** → {cat} > {metier}")
-            
-            # Copie dossier
-            dest = os.path.join(DOSSIER_TRI, cat.replace(" ", "_"))
-            os.makedirs(dest, exist_ok=True)
-            try: shutil.copy2(chemin, os.path.join(dest, nom))
-            except: pass
-            
-            duree_cv = (datetime.now() - debut_cv).total_seconds()
-            temps_par_cv.append(duree_cv)
-            barre.progress((i + 1) / len(fichiers))
-        
-        journal.markdown("  \n".join(logs[-8:]))
-        temps_estime.empty()
-        
-        if st.session_state.cv_a_valider:
-            st.warning(f"⚠️ {len(st.session_state.cv_a_valider)} CV nécessitent votre validation")
-            st.info("👉 Allez dans **⚠️ Validation** pour les corriger")
-        else:
-            st.success(f"🎉 Analyse terminée ! {len(fichiers)} CV traités automatiquement.")
-        st.balloons()
+            cat = escape(r['categorie'])
+            suffixe = f' <span style="color:{ui.TONS["ambre"][1]}">· à valider</span>' if r['a_valider'] else ''
+            journal.append({'heure': heure, 'html': f'Classification – <b style="color:{ui.VERT}">{cat}</b>{suffixe}'})
+            if r.get('copie'):
+                journal.append({'heure': heure, 'html': f'Copie vers le dossier <b>{cat}</b>'})
+        nb_valider = sum(1 for r in st.session_state.resultats[-total:] if r.get('a_valider'))
+        journal.append({'heure': datetime.now().strftime("%H:%M"),
+                        'html': f'<b>Analyse terminée</b> – {total} CV traités'
+                                + (f', <b style="color:{ui.TONS["ambre"][1]}">{nb_valider} à valider</b>' if nb_valider else '')})
+        st.session_state.derniere_analyse = {'total': total, 'termines': total}
 
+    derniere = st.session_state.derniere_analyse or {'total': len(fichiers), 'termines': 0}
+    zone.html(rendu_progression(derniere['total'], derniere['termines'], st.session_state.journal))
 
 # ============================================================
 # PAGE RÉSULTATS
 # ============================================================
 def page_resultats():
-    st.markdown('<div class="main-title">Résultats de classification</div>', unsafe_allow_html=True)
-    
-    if not st.session_state.resultats:
-        st.info("📊 Aucun résultat. Allez dans **Analyser** pour commencer.")
+    resultats = st.session_state.resultats
+    c1, c2, c3 = st.columns([4.2, 1, 1.9], vertical_alignment="center")
+    with c1: ui.entete("Résultats de classification")
+    with c2: st.button("Filtrer", key="btn_res_filtrer", use_container_width=True, on_click=aller_a, args=("Filtrer",))
+    with c3: bouton_export("Exporter les résultats", resultats, "btn_res_export")
+
+    if not resultats:
+        etat_vide("Aucun résultat pour le moment. Lancez une analyse pour classer vos CV.", "Analyser des CV", "Analyser")
         return
-    
-    resultats = [r for r in st.session_state.resultats if r.get('succes')]
-    total = len(st.session_state.resultats)
-    classes = len(resultats)
-    nc = total - classes
-    
-    c1, c2, c3 = st.columns(3)
-    with c1: st.metric("📄 Total des CV", total)
-    with c2: st.metric("✅ Classés", classes)
-    with c3: st.metric("❓ Non classés", nc)
-    
-    st.markdown("---")
-    st.subheader("Répartition par domaine")
-    
+
+    classes = [r for r in resultats if r.get('succes') and r['categorie'] != 'Non classé']
+    nb_non_classes = len(resultats) - len(classes)
+    ui.afficher(ui.grille([
+        ui.carte_stat("Total des CV", len(resultats)),
+        ui.carte_stat("Classés", len(classes), ui.VERT),
+        ui.carte_stat("Non classés", nb_non_classes, ui.ROUGE),
+    ], 3))
+
     compteur = {}
-    for r in resultats:
-        cat = r['categorie']
-        compteur[cat] = compteur.get(cat, 0) + 1
-    if nc > 0: compteur['Non classé'] = nc
-    
-    cols = st.columns(4)
-    for i, (cat, nb) in enumerate(compteur.items()):
-        with cols[i % 4]:
-            data = CATEGORIES.get(cat, {'emoji': '❓', 'couleur': '#888888'})
-            st.markdown(f"""
-            <div class="cat-card" style="border-left-color: {data['couleur']};">
-                <div class="cat-emoji">{data['emoji']}</div>
-                <div>
-                    <div class="cat-name">{cat}</div>
-                    <div class="cat-count">{nb} CV</div>
-                </div>
-            </div>
-            """, unsafe_allow_html=True)
-    
-    st.markdown("---")
-    tab1, tab2 = st.tabs(["🏆 Classement", "📋 Détails"])
-    
-    with tab1:
-        data = []
-        for idx, r in enumerate(st.session_state.resultats):
-            if not r.get('succes'): continue
-            i = r['infos']
-            a_valider = idx in st.session_state.cv_a_valider
-            data.append({
-                'Rang': 0,
-                '⚠️': "⚠️" if a_valider else "✅",
-                'Nom': i.get('nom', 'RAS'),
-                'Prénom': i.get('prenom', 'RAS'),
-                'Domaine': r['categorie'],
-                'Métier': r.get('metier', 'RAS'),
-                'Niveau': i.get('niveau_etudes', 'RAS'),
-                'Ville': i.get('ville', 'RAS'),
-                'Âge': i.get('age', 'RAS'),
-                'Sexe': i.get('sexe', 'RAS'),
-                'Exp.': i.get('annees_experience', 0),
-                'Email': i.get('email', 'RAS'),
-                'Téléphone': i.get('telephone', 'RAS'),
-                'Score': r['scores']['total']
-            })
-        if data:
-            df = pd.DataFrame(data).sort_values('Score', ascending=False)
-            df['Rang'] = range(1, len(df) + 1)
-            st.dataframe(df, use_container_width=True, height=400)
-    
-    with tab2:
-        for idx, r in enumerate(st.session_state.resultats):
-            if not r.get('succes'): continue
-            i = r['infos']
-            nom_complet = f"{i.get('prenom', 'RAS')} {i.get('nom', 'RAS')}".strip()
-            data_cat = CATEGORIES.get(r['categorie'], {'emoji': '❓', 'couleur': '#888'})
-            metier = r.get('metier', 'RAS')
-            a_valider = idx in st.session_state.cv_a_valider
-            
-            marqueur = "⚠️" if a_valider else "✅"
-            with st.expander(f"{marqueur} {data_cat['emoji']} **{nom_complet}** — {r['categorie']} > {metier} — Score : {r['scores']['total']}/100"):
-                c1, c2 = st.columns([2, 1])
-                with c1:
-                    st.markdown("**📝 Résumé automatique**")
-                    st.markdown(f"""
-                    <div style="background: linear-gradient(135deg, #e0f0ff 0%, #d0f0e0 100%);
-                                border-left: 5px solid #2B3F8C;
-                                padding:1rem 1.2rem; border-radius:10px; margin-bottom:1rem;
-                                color:#2B3F8C; font-weight:600;">
-                        {r.get('resume', '')}
-                    </div>
-                    """, unsafe_allow_html=True)
-                    
-                    st.markdown("**👤 Informations extraites**")
-                    for k, v in [
-                        ('Nom', i.get('nom', 'RAS')), ('Prénom', i.get('prenom', 'RAS')),
-                        ('Email', i.get('email', 'RAS')), ('Téléphone', i.get('telephone', 'RAS')),
-                        ('Âge', i.get('age', 'RAS')), ('Sexe', i.get('sexe', 'RAS')),
-                        ('Situation', i.get('situation', 'RAS')), ('Nationalité', i.get('nationalite', 'RAS')),
-                        ('Ville', i.get('ville', 'RAS')), ('Niveau', i.get('niveau_etudes', 'RAS')),
-                        ('Établissement', i.get('etablissement', 'RAS')),
-                        ('Expérience', f"{i.get('annees_experience', 0)} ans"),
-                        ('Poste actuel', i.get('poste_actuel', 'RAS')),
-                        ('Langues', i.get('langues', 'RAS')),
-                        ('Certifications', i.get('certifications', 'RAS')),
-                    ]:
-                        if v == "RAS":
-                            st.markdown(f"- **{k}** : <span class='badge-ras'>RAS</span>", unsafe_allow_html=True)
-                        else:
-                            st.markdown(f"- **{k}** : {v}")
-                    
-                    comps = i.get('competences', [])
-                    if comps:
-                        st.markdown("**🛠️ Compétences**")
-                        st.markdown(" ".join([f'<span class="skill-tag">{c}</span>' for c in comps[:15]]),
-                                    unsafe_allow_html=True)
-                    
-                    # Bouton corriger
-                    if st.button("✏️ Corriger ce CV", key=f"corr_res_{idx}"):
-                        st.session_state.cv_a_valider = list(set(st.session_state.cv_a_valider + [idx]))
-                        st.session_state.page_active = "Validation"
-                        st.rerun()
-                
-                with c2:
-                    st.markdown(f"""
-                    <div style="text-align:center; padding:1rem;">
-                        <div style="color:#2d4a7c; font-weight:700; font-size:0.9rem;">Classification</div>
-                        <div style="margin:0.7rem 0;">
-                            <span class="badge-cat" style="background:{data_cat['couleur']};">
-                                {data_cat['emoji']} {r['categorie']}
-                            </span>
-                        </div>
-                        <div style="margin:0.5rem 0;">
-                            <span class="badge-metier">{metier}</span>
-                        </div>
-                        <div style="color:#2d4a7c; font-weight:600; font-size:0.85rem;">
-                            Confiance : {r['confiance']*100:.0f}%
-                        </div>
-                    </div>
-                    """, unsafe_allow_html=True)
-    
-    st.markdown("---")
-    if st.button("📥 Exporter en Excel", type="primary", key="btn_export_res"):
-        chemin = exporter_excel(st.session_state.resultats)
-        if chemin:
-            st.success(f"✅ Exporté : {chemin}")
-            with open(chemin, 'rb') as f:
-                st.download_button("⬇️ Télécharger", data=f,
-                                   file_name=os.path.basename(chemin),
-                                   mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet")
+    for r in classes:
+        compteur[r['categorie']] = compteur.get(r['categorie'], 0) + 1
+    tuiles = []
+    for cat, nb in sorted(compteur.items(), key=lambda x: -x[1]):
+        fond, texte = ui.ton_domaine(cat)
+        tuiles.append(f'<div class="cv-carte" style="background:{fond};border:none"><div style="font-weight:700;color:{texte}">'
+                      f'{escape(cat)}</div><div style="color:#3A4357;margin-top:0.3rem">{nb} CV</div></div>')
+    if nb_non_classes:
+        tuiles.append(f'<div class="cv-carte" style="background:#ECEFF4;border:1.5px dashed #9AA3B5">'
+                      f'<div style="font-weight:700;color:#3A4357">Non classé</div>'
+                      f'<div style="color:#3A4357;margin-top:0.3rem">{nb_non_classes} CV · à valider</div></div>')
+    ui.afficher('<div class="cv-h2" style="margin-top:0.6rem">Répartition par domaine</div>' + ui.grille(tuiles, 4))
 
-
-# ============================================================
-# MODALE DE CORRECTION
-# ============================================================
-@st.dialog("✏️ Correction des informations", width="large")
-def modale_correction(idx_cv):
-    r = st.session_state.resultats[idx_cv]
-    infos = r['infos']
-    
-    st.markdown(f"### 📄 {r['fichier']}")
-    st.markdown("---")
-    
-    # ========== IDENTITÉ ==========
-    st.markdown("#### 👤 Identité")
-    col1, col2 = st.columns(2)
-    with col1:
-        new_nom = st.text_input("Nom", value=infos.get('nom', 'RAS'), key=f"cn_{idx_cv}")
-    with col2:
-        new_prenom = st.text_input("Prénom", value=infos.get('prenom', 'RAS'), key=f"cp_{idx_cv}")
-    
-    col1, col2 = st.columns(2)
-    with col1:
-        new_email = st.text_input("Email", value=infos.get('email', 'RAS'), key=f"ce_{idx_cv}")
-    with col2:
-        new_tel = st.text_input("Téléphone", value=infos.get('telephone', 'RAS'), key=f"ct_{idx_cv}")
-    
-    # Sexe
-    sexe_actuel = infos.get('sexe', 'RAS')
-    options_sexe = ['RAS', 'Homme', 'Femme']
-    idx_s = options_sexe.index(sexe_actuel) if sexe_actuel in options_sexe else 0
-    new_sexe = st.radio("Sexe", options_sexe, index=idx_s, horizontal=True, key=f"cs_{idx_cv}")
-    
-    # Âge + Situation
-    col1, col2 = st.columns(2)
-    with col1:
-        age_actuel = str(infos.get('age', 'RAS'))
-        # Âge inconnu → champ vide (évite d'enregistrer un âge inventé) ; borné pour éviter une exception Streamlit
-        age_def = min(max(int(age_actuel), 15), 85) if age_actuel.isdigit() else None
-        new_age = st.number_input("Âge", min_value=15, max_value=85, value=age_def, key=f"ca_{idx_cv}")
-    with col2:
-        situations = ['RAS', 'Célibataire', 'Marié(e)', 'Divorcé(e)', 'Veuf(ve)']
-        sit_actuelle = infos.get('situation', 'RAS')
-        idx_sit = situations.index(sit_actuelle) if sit_actuelle in situations else 0
-        new_situation = st.selectbox("Situation", situations, index=idx_sit, key=f"csit_{idx_cv}")
-    
-    # Nationalité + Ville
-    col1, col2 = st.columns(2)
-    with col1:
-        new_nationalite = st.text_input("Nationalité", value=infos.get('nationalite', 'RAS'), key=f"cnat_{idx_cv}")
-    with col2:
-        new_ville = st.text_input("Ville", value=infos.get('ville', 'RAS'), key=f"cv_{idx_cv}")
-    
-    st.markdown("---")
-    
-    # ========== FORMATION ==========
-    st.markdown("#### 🎓 Formation")
-    niveaux = ['RAS', 'Bac', 'BTS/DUT', 'Licence', 'Master/Ingénieur', 'Doctorat']
-    niveau_actuel = infos.get('niveau_etudes', 'RAS')
-    idx_n = niveaux.index(niveau_actuel) if niveau_actuel in niveaux else 0
-    new_niveau = st.selectbox("Niveau d'études", niveaux, index=idx_n, key=f"cniv_{idx_cv}")
-    
-    new_etab = st.text_input("Établissement", value=infos.get('etablissement', 'RAS'), key=f"cetab_{idx_cv}")
-    
-    st.markdown("---")
-    
-    # ========== EXPÉRIENCE (NOUVEAU) ==========
-    st.markdown("#### 💼 Expérience professionnelle")
-    
-    col1, col2 = st.columns(2)
-    with col1:
-        exp_actuelle = infos.get('annees_experience', 0)
-        new_experience = st.number_input(
-            "Années d'expérience",
-            min_value=0,
-            max_value=60,
-            value=min(max(int(exp_actuelle), 0), 60),
-            step=1,
-            key=f"cexp_{idx_cv}",
-            help="Corrigez le nombre d'années d'expérience si nécessaire"
-        )
-    with col2:
-        new_poste = st.text_input("Poste actuel", value=infos.get('poste_actuel', 'RAS'), key=f"cposte_{idx_cv}")
-    
-    st.markdown("---")
-    
-    # ========== COMPÉTENCES ET LANGUES ==========
-    st.markdown("#### 🛠️ Compétences et Langues")
-    
-    comps_actuelles = infos.get('competences', [])
-    comps_str = ', '.join(comps_actuelles) if comps_actuelles else ''
-    new_comps = st.text_area(
-        "Compétences (séparées par virgule)",
-        value=comps_str,
-        height=80,
-        key=f"ccomp_{idx_cv}"
-    )
-    
-    col1, col2 = st.columns(2)
-    with col1:
-        new_langues = st.text_input("Langues", value=infos.get('langues', 'RAS'), key=f"clang_{idx_cv}")
-    with col2:
-        new_certs = st.text_input("Certifications", value=infos.get('certifications', 'RAS'), key=f"ccert_{idx_cv}")
-    
-    st.markdown("---")
-    
-    # ========== CLASSIFICATION ==========
-    st.markdown("#### 🎯 Classification")
-    
-    col_d, col_m = st.columns(2)
-    with col_d:
-        domaine_actuel = r['categorie']
-        domaines = list(CATEGORIES.keys())
-        if domaine_actuel not in domaines:
-            domaines.insert(0, domaine_actuel)
-        idx_d = domaines.index(domaine_actuel) if domaine_actuel in domaines else 0
-        new_domaine = st.selectbox("Domaine", domaines, index=idx_d, key=f"cd_{idx_cv}")
-    
-    with col_m:
-        metiers_dispo = ['RAS'] + list(CATEGORIES.get(new_domaine, {}).get('metiers', {}).keys())
-        metier_actuel = r.get('metier', 'RAS')
-        if metier_actuel not in metiers_dispo:
-            metiers_dispo.insert(1, metier_actuel)
-        idx_m = metiers_dispo.index(metier_actuel) if metier_actuel in metiers_dispo else 0
-        new_metier = st.selectbox("Métier", metiers_dispo, index=idx_m, key=f"cm_{idx_cv}")
-    
-    st.markdown("---")
-    
-    # ========== BOUTONS ==========
-    col1, col2, col3 = st.columns(3)
-    with col1:
-        if st.button("💾 Enregistrer + Apprendre", type="primary",
-                     use_container_width=True, key=f"save_{idx_cv}"):
-            
-            # Sauvegarder TOUTES les corrections
-            corrections = {
-                'nom': new_nom,
-                'prenom': new_prenom,
-                'email': new_email,
-                'telephone': new_tel,
-                'sexe': new_sexe,
-                'age': str(int(new_age)) if new_age is not None else 'RAS',
-                'situation': new_situation,
-                'nationalite': new_nationalite,
-                'ville': new_ville,
-                'niveau_etudes': new_niveau,
-                'etablissement': new_etab,
-                'annees_experience': new_experience,
-                'poste_actuel': new_poste,
-                'langues': new_langues,
-                'certifications': new_certs,
-            }
-            
-            for champ, val in corrections.items():
-                ancienne = infos.get(champ, 'RAS')
-                if ancienne != val:
-                    # Enregistrer pour apprentissage
-                    enregistrer_correction(st.session_state.apprentissage, champ, ancienne, val, new_prenom)
-                infos[champ] = val
-            
-            # Compétences
-            if new_comps:
-                infos['competences'] = [c.strip() for c in new_comps.split(',') if c.strip()]
-            else:
-                infos['competences'] = []
-            
-            # Classification
-            r['categorie'] = new_domaine
-            r['metier'] = new_metier
-            
-            # Recalculer
-            r['scores'] = calculer_score(infos)
-            r['resume'] = generer_resume(infos, new_domaine, new_metier)
-            st.session_state.resultats[idx_cv] = r
-            
-            # Retirer de la liste à valider
-            if idx_cv in st.session_state.cv_a_valider:
-                st.session_state.cv_a_valider.remove(idx_cv)
-            
-            st.success("✅ Corrections enregistrées + apprises !")
-            st.rerun()
-    
-    with col2:
-        if st.button("⏭️ Plus tard", use_container_width=True, key=f"skip_{idx_cv}"):
-            st.rerun()
-    
-    with col3:
-        if st.button("🗑️ Fermer", use_container_width=True, key=f"close_{idx_cv}"):
-            st.rerun()
-
-
-# ============================================================
-# PAGE VALIDATION
-# ============================================================
-def page_validation():
-    st.markdown('<div class="main-title">⚠️ Validation requise</div>', unsafe_allow_html=True)
-    st.markdown('<div class="main-subtitle">Ces CV ont des champs à faible confiance. Corrigez-les pour améliorer l\'apprentissage.</div>', unsafe_allow_html=True)
-    
-    if not st.session_state.cv_a_valider:
-        st.success("✅ Aucun CV en attente de validation !")
-        st.markdown("---")
-        st.subheader("📊 Statistiques d'apprentissage")
-        stats = get_stats_apprentissage(st.session_state.apprentissage)
-        c1, c2, c3 = st.columns(3)
-        with c1: st.metric("🎯 Corrections totales", stats['total_corrections'])
-        with c2: st.metric("👤 Prénoms appris", stats['sexe_appris'])
-        with c3: st.metric("🏷️ Domaines appris", stats['domaines_appris'])
-        return
-    
-    st.warning(f"⚠️ **{len(st.session_state.cv_a_valider)} CV** nécessitent votre validation")
-    st.markdown("---")
-    
-    for i, idx_cv in enumerate(st.session_state.cv_a_valider.copy()):
-        if idx_cv >= len(st.session_state.resultats): continue
-        r = st.session_state.resultats[idx_cv]
-        infos = r['infos']
-        nom = f"{infos.get('prenom', 'RAS')} {infos.get('nom', 'RAS')}".strip()
-        
-        with st.expander(f"⚠️ **{nom}** — {r['categorie']} > {r.get('metier', 'RAS')}", expanded=(i == 0)):
-            st.markdown(f"**Fichier** : {r['fichier']}")
-            st.markdown("")
-            
-            champs_a_valider = verifier_champs_a_valider(infos, r['categorie'], r.get('metier', 'RAS'), st.session_state.seuil_confiance)
-            
-            if champs_a_valider:
-                st.markdown("**Champs à vérifier :**")
-                for c in champs_a_valider:
-                    conf_pct = c['confiance'] * 100
-                    emoji = "🔴" if conf_pct < 30 else ("🟠" if conf_pct < 60 else "🟡")
-                    st.markdown(f"{emoji} **{c['champ'].replace('_', ' ').title()}** : `{c['valeur_actuelle']}` — Confiance : {conf_pct:.0f}% (seuil : {c['seuil']}%)")
-            
-            st.markdown("")
-            col1, col2 = st.columns(2)
-            with col1:
-                if st.button(f"✏️ Corriger", type="primary", key=f"corr_{idx_cv}"):
-                    modale_correction(idx_cv)
-            with col2:
-                if st.button(f"✅ Marquer validé", key=f"valid_{idx_cv}"):
-                    st.session_state.cv_a_valider.remove(idx_cv)
-                    st.rerun()
-
-
-# ============================================================
-# PAGE APPRENTISSAGE
-# ============================================================
-def page_apprentissage():
-    st.markdown('<div class="main-title">🧠 Apprentissage</div>', unsafe_allow_html=True)
-    st.markdown('<div class="main-subtitle">Voici ce que l\'application a appris de vos corrections.</div>', unsafe_allow_html=True)
-    
-    apprentissage = st.session_state.apprentissage
-    stats = get_stats_apprentissage(apprentissage)
-    
-    c1, c2, c3, c4 = st.columns(4)
-    with c1: st.metric("📊 Total corrections", stats['total_corrections'])
-    with c2: st.metric("👤 Prénoms appris", stats['sexe_appris'])
-    with c3: st.metric("🏷️ Domaines appris", stats['domaines_appris'])
-    with c4: st.metric("💼 Métiers appris", stats['metiers_appris'])
-    
-    st.markdown("---")
-    
-    tabs = st.tabs(["⚧ Sexe", "🏷️ Domaines", "💼 Métiers"])
-    
-    with tabs[0]:
-        st.subheader("Prénoms → Sexe")
-        if apprentissage.get('sexe'):
-            df = pd.DataFrame([{'Prénom': k.capitalize(), 'Sexe': v}
-                              for k, v in apprentissage['sexe'].items()])
-            st.dataframe(df, use_container_width=True)
-        else:
-            st.info("Aucune donnée apprise.")
-    
-    with tabs[1]:
-        st.subheader("Mots-clés → Domaines")
-        if apprentissage.get('domaines'):
-            df = pd.DataFrame([{'Mot-clé': k, 'Domaine': v}
-                              for k, v in apprentissage['domaines'].items()])
-            st.dataframe(df, use_container_width=True)
-        else:
-            st.info("Aucune donnée apprise.")
-    
-    with tabs[2]:
-        st.subheader("Mots-clés → Métiers")
-        if apprentissage.get('metiers'):
-            df = pd.DataFrame([{'Mot-clé': k, 'Métier': v}
-                              for k, v in apprentissage['metiers'].items()])
-            st.dataframe(df, use_container_width=True)
-        else:
-            st.info("Aucune donnée apprise.")
-    
-    st.markdown("---")
-    col1, col2 = st.columns(2)
-    with col1:
-        if st.button("🗑️ Réinitialiser", type="secondary", use_container_width=True):
-            st.session_state.apprentissage = {
-                'sexe': {}, 'domaines': {}, 'metiers': {},
-                'stats': {'total_corrections': 0, 'derniere_maj': None}
-            }
-            sauvegarder_apprentissage(st.session_state.apprentissage)
-            st.success("✅ Réinitialisé")
-            st.rerun()
-    with col2:
-        if st.button("💾 Sauvegarder", type="primary", use_container_width=True):
-            sauvegarder_apprentissage(st.session_state.apprentissage)
-            st.success("✅ Sauvegardé dans apprentissage.json")
-
+    nb = len(st.session_state.cv_a_valider)
+    if nb:
+        with st.container(key="carte_attention"):
+            t, b = st.columns([5, 1.5], vertical_alignment="center")
+            with t:
+                ui.afficher(f'<div style="color:#3A4357;font-size:0.98rem"><b style="color:#0F1B3D">'
+                            f'{nb} CV {"demande" if nb == 1 else "demandent"} votre attention.</b> '
+                            f'Confirmez ou corrigez {"son" if nb == 1 else "leur"} domaine pour que CVSmart '
+                            f'apprenne de votre choix.</div>')
+            with b:
+                st.button("Ouvrir la validation", key="btn_ouvrir_validation", type="primary",
+                          use_container_width=True, on_click=aller_a, args=("Validation",))
 
 # ============================================================
 # PAGE FILTRER
 # ============================================================
+NIVEAUX = ['Bac', 'BTS/DUT', 'Licence', 'Master/Ingénieur', 'Doctorat']
+
+
+def reinitialiser_filtres():
+    for cle in list(st.session_state.keys()):
+        if cle.startswith('f_'):
+            del st.session_state[cle]
+
+
+def enregistrer_selection(selection, etiquettes):
+    nom = "_".join(etiquettes or ["Selection"])
+    nom = re.sub(r'[^\w\-]+', '_', nom)[:80] + f"_{datetime.now().strftime('%Y%m%d_%H%M%S')}"
+    dossier = os.path.join(DOSSIER_FILTRES, nom)
+    os.makedirs(dossier, exist_ok=True)
+    copies = 0
+    for r in selection:
+        for source in [r.get('chemin'), r.get('copie')]:
+            if source and os.path.exists(source):
+                shutil.copy2(source, os.path.join(dossier, r['fichier']))
+                copies += 1
+                break
+    flash(f"{copies} CV copiés dans <b>{escape(dossier)}</b>")
+
+
 def page_filtrer():
-    st.markdown('<div class="main-title">🎯 Filtrer les CV</div>', unsafe_allow_html=True)
-    st.markdown('<div class="main-subtitle">Combinez les critères pour trouver les candidats idéaux.</div>', unsafe_allow_html=True)
-    
-    if not st.session_state.resultats:
-        st.info("📊 Aucun CV analysé. Allez dans **Analyser** d'abord.")
-        return
-    
     resultats = [r for r in st.session_state.resultats if r.get('succes')]
-    
-    col_filtres, col_resultats = st.columns([1, 3])
-    
-    with col_filtres:
-        st.markdown('<div class="filter-container">', unsafe_allow_html=True)
-        st.markdown('<div class="filter-header">🔍 FILTRES</div>', unsafe_allow_html=True)
-        
-        st.markdown('<div class="filter-group"><div class="filter-group-title">📚 Niveau</div>', unsafe_allow_html=True)
-        niveaux_possibles = ['Bac', 'BTS/DUT', 'Licence', 'Master/Ingénieur', 'Doctorat']
-        niveaux_counts = {n: sum(1 for r in resultats if r['infos'].get('niveau_etudes') == n) for n in niveaux_possibles}
-        niveaux_selection = st.multiselect("Niveau", options=niveaux_possibles,
-            format_func=lambda x: f"{x} ({niveaux_counts[x]})", key="f_niveau", label_visibility="collapsed")
-        st.markdown('</div>', unsafe_allow_html=True)
-        
-        st.markdown('<div class="filter-group"><div class="filter-group-title">👤 Sexe</div>', unsafe_allow_html=True)
-        sexes_possibles = ['Homme', 'Femme', 'RAS']
-        sexes_counts = {s: sum(1 for r in resultats if r['infos'].get('sexe') == s) for s in sexes_possibles}
-        sexes_selection = st.multiselect("Sexe", options=sexes_possibles,
-            format_func=lambda x: f"{x} ({sexes_counts[x]})", key="f_sexe", label_visibility="collapsed")
-        st.markdown('</div>', unsafe_allow_html=True)
-        
-        st.markdown('<div class="filter-group"><div class="filter-group-title">📍 Ville</div>', unsafe_allow_html=True)
-        villes_dispo = sorted(set(r['infos'].get('ville', 'RAS') for r in resultats))
-        villes_counts = {v: sum(1 for r in resultats if r['infos'].get('ville') == v) for v in villes_dispo}
-        villes_selection = st.multiselect("Ville", options=villes_dispo,
-            format_func=lambda x: f"{x} ({villes_counts[x]})", key="f_ville", label_visibility="collapsed")
-        st.markdown('</div>', unsafe_allow_html=True)
-        
-        st.markdown('<div class="filter-group"><div class="filter-group-title">🏷️ Domaine</div>', unsafe_allow_html=True)
-        cats_dispo = sorted(set(r['categorie'] for r in resultats))
-        cats_counts = {c: sum(1 for r in resultats if r['categorie'] == c) for c in cats_dispo}
-        cats_selection = st.multiselect("Domaine", options=cats_dispo,
-            format_func=lambda x: f"{x} ({cats_counts[x]})", key="f_cat", label_visibility="collapsed")
-        st.markdown('</div>', unsafe_allow_html=True)
-        
-        st.markdown('<div class="filter-group"><div class="filter-group-title">💼 Métier</div>', unsafe_allow_html=True)
-        metiers_dispo = sorted(set(r.get('metier', 'RAS') for r in resultats if r.get('metier', 'RAS') != 'RAS'))
-        metiers_counts = {m: sum(1 for r in resultats if r.get('metier') == m) for m in metiers_dispo}
-        metiers_selection = st.multiselect("Métier", options=metiers_dispo,
-            format_func=lambda x: f"{x} ({metiers_counts[x]})", key="f_metier", label_visibility="collapsed")
-        st.markdown('</div>', unsafe_allow_html=True)
-        
-        st.markdown('<div class="filter-group"><div class="filter-group-title">📅 Âge</div>', unsafe_allow_html=True)
-        ages_valides = [int(r['infos']['age']) for r in resultats if str(r['infos'].get('age', 'RAS')).isdigit()]
-        age_min, age_max = (min(ages_valides), max(ages_valides)) if ages_valides else (18, 60)
-        age_range = st.slider("Âge", min_value=16, max_value=70, value=(age_min, age_max), key="f_age")
-        st.markdown('</div>', unsafe_allow_html=True)
-        
-        st.markdown('<div class="filter-group"><div class="filter-group-title">💼 Expérience</div>', unsafe_allow_html=True)
-        exp_range = st.slider("Expérience", min_value=0, max_value=40, value=(0, 40), key="f_exp")
-        st.markdown('</div>', unsafe_allow_html=True)
-        
-        st.markdown('<div class="filter-group"><div class="filter-group-title">⭐ Score min</div>', unsafe_allow_html=True)
-        score_min = st.slider("Score", min_value=0, max_value=100, value=0, key="f_score")
-        st.markdown('</div>', unsafe_allow_html=True)
-        
-        st.markdown('<div class="filter-group"><div class="filter-group-title">🔍 Recherche</div>', unsafe_allow_html=True)
-        recherche = st.text_input("Recherche", placeholder="Ex: marketing...", key="f_recherche", label_visibility="collapsed")
-        st.markdown('</div>', unsafe_allow_html=True)
-        
-        st.markdown('</div>', unsafe_allow_html=True)
-    
-    resultats_filtres = resultats.copy()
-    
-    if niveaux_selection:
-        resultats_filtres = [r for r in resultats_filtres if r['infos'].get('niveau_etudes') in niveaux_selection]
-    if sexes_selection:
-        resultats_filtres = [r for r in resultats_filtres if r['infos'].get('sexe') in sexes_selection]
-    if villes_selection:
-        resultats_filtres = [r for r in resultats_filtres if r['infos'].get('ville') in villes_selection]
-    if cats_selection:
-        resultats_filtres = [r for r in resultats_filtres if r['categorie'] in cats_selection]
-    if metiers_selection:
-        resultats_filtres = [r for r in resultats_filtres if r.get('metier') in metiers_selection]
-    
-    resultats_filtres = [r for r in resultats_filtres 
-                         if (str(r['infos'].get('age', 'RAS')).isdigit() 
-                             and age_range[0] <= int(r['infos']['age']) <= age_range[1])
-                         or r['infos'].get('age') == 'RAS']
-    
-    resultats_filtres = [r for r in resultats_filtres if exp_range[0] <= r['infos'].get('annees_experience', 0) <= exp_range[1]]
-    resultats_filtres = [r for r in resultats_filtres if r['scores']['total'] >= score_min]
-    
-    if recherche:
-        rech_lower = recherche.lower()
-        resultats_filtres = [r for r in resultats_filtres if rech_lower in r['infos'].get('texte_brut', '').lower()]
-    
-    with col_resultats:
-        nb_initial = len(resultats)
-        nb_filtres = len(resultats_filtres)
-        
-        st.markdown(f"""
-        <div style="background: linear-gradient(135deg, #2B3F8C 0%, #E63946 100%);
-                    border-radius: 12px; padding: 1rem 1.5rem; color: white;
-                    margin-bottom: 1rem; display: flex; justify-content: space-between;">
-            <div style="font-weight: 800; font-size: 1.1rem;">🎯 {nb_filtres} CV correspondent</div>
-            <div style="opacity: 0.9; font-size: 0.9rem;">sur {nb_initial} CV analysés</div>
-        </div>
-        """, unsafe_allow_html=True)
-        
-        if not resultats_filtres:
-            st.warning("⚠️ Aucun CV ne correspond.")
-        else:
-            for r in sorted(resultats_filtres, key=lambda x: x['scores']['total'], reverse=True):
-                i = r['infos']
-                nom = f"{i.get('prenom', 'RAS')} {i.get('nom', 'RAS')}".strip()
-                data_cat = CATEGORIES.get(r['categorie'], {'emoji': '❓', 'couleur': '#888'})
-                metier = r.get('metier', 'RAS')
-                
-                st.markdown(f"""
-                <div class="result-item">
-                    <div style="display: flex; justify-content: space-between;">
-                        <div style="flex: 1;">
-                            <div style="font-weight: 800; color: #2B3F8C; font-size: 1.05rem;">{nom}</div>
-                            <div style="color: #2d4a7c; font-size: 0.85rem; margin-top: 0.3rem;">
-                                {i.get('niveau_etudes', 'RAS')} · {i.get('sexe', 'RAS')} · {i.get('age', 'RAS')} ans · 📍 {i.get('ville', 'RAS')}
-                            </div>
-                            <div style="color: #4a6fa5; font-size: 0.8rem; margin-top: 0.3rem;">
-                                ✉️ {i.get('email', 'RAS')} · 📞 {i.get('telephone', 'RAS')}
-                            </div>
-                        </div>
-                        <div style="text-align: right;">
-                            <span class="badge-cat" style="background: {data_cat['couleur']}; font-size: 0.7rem;">
-                                {data_cat['emoji']} {r['categorie']}
-                            </span>
-                            <span class="badge-metier" style="font-size: 0.7rem;">{metier}</span>
-                            <div style="font-size: 1.5rem; font-weight: 900; color: #2B3F8C; margin-top: 0.5rem;">
-                                {r['scores']['total']}
-                            </div>
-                        </div>
-                    </div>
-                </div>
-                """, unsafe_allow_html=True)
-        
-        if resultats_filtres:
-            st.markdown("---")
-            st.subheader("📤 Exporter la sélection")
-            col_a, col_b = st.columns(2)
-            with col_a:
-                if st.button("📁 Créer un dossier", type="primary", use_container_width=True, key="btn_export_dossier"):
-                    nom_parts = []
-                    if niveaux_selection: nom_parts.append("_".join(niveaux_selection).replace("/", ""))
-                    if sexes_selection: nom_parts.append("_".join(sexes_selection))
-                    if villes_selection: nom_parts.append("_".join(villes_selection))
-                    if cats_selection: nom_parts.append("_".join(cats_selection))
-                    if metiers_selection: nom_parts.append("_".join(metiers_selection))
-                    if not nom_parts: nom_parts.append("Selection")
-                    horodatage = datetime.now().strftime("%Y%m%d_%H%M%S")
-                    nom_dossier = "_".join(nom_parts).replace(" ", "_") + f"_{horodatage}"
-                    chemin_dossier = os.path.join(DOSSIER_FILTRES, nom_dossier)
-                    os.makedirs(chemin_dossier, exist_ok=True)
-                    for r in resultats_filtres:
-                        fichier_orig = r.get('fichier', '')
-                        candidats = [r.get('chemin', '')] + [os.path.join(racine, fichier_orig)
-                                                             for racine in [".", DOSSIER_A_TRAITER, DOSSIER_TRI]]
-                        for chemin_rech in candidats:
-                            if chemin_rech and os.path.exists(chemin_rech):
-                                shutil.copy2(chemin_rech, os.path.join(chemin_dossier, fichier_orig))
-                                break
-                    st.success(f"✅ Dossier créé : {chemin_dossier}")
-            with col_b:
-                if st.button("📥 Exporter Excel", type="primary", use_container_width=True, key="btn_export_filtre"):
-                    horodatage = datetime.now().strftime("%Y%m%d_%H%M%S")
-                    chemin = exporter_excel(resultats_filtres, f"Selection_{horodatage}.xlsx")
-                    if chemin:
-                        st.success(f"✅ Exporté : {chemin}")
-                        with open(chemin, 'rb') as f:
-                            st.download_button("⬇️ Télécharger", data=f,
-                                file_name=os.path.basename(chemin),
-                                mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet")
+    c1, c2 = st.columns([1.5, 1], vertical_alignment="center")
+    with c1: ui.entete("Filtrer les CV")
+    with c2:
+        recherche = st.text_input("Recherche", placeholder="Nom, compétence, école...", key="f_recherche",
+                                  label_visibility="collapsed")
+    if not resultats:
+        etat_vide("Aucun CV analysé. Lancez d'abord une analyse.", "Analyser des CV", "Analyser")
+        return
 
-
-# ============================================================
-# PAGE MATCHING
-# ============================================================
-def page_matching():
-    st.markdown('<div class="main-title">🤝 Matching avec une offre</div>', unsafe_allow_html=True)
-    st.markdown('<div class="main-subtitle">Collez une offre et voyez les CV qui correspondent.</div>', unsafe_allow_html=True)
-    
-    offre = st.text_area("📝 Description de l'offre", height=200,
-        placeholder="Ex: Développeur Python Senior\n5 ans d'expérience minimum\nPython, Django, AWS",
-        key="offre_text")
-    
-    if st.button("🎯 Lancer le matching", type="primary", key="btn_matching"):
-        if not offre.strip():
-            st.warning("⚠️ Collez une offre")
-            return
-        if not st.session_state.resultats:
-            st.warning("⚠️ Aucun CV analysé.")
-            return
-        
-        resultats = [r for r in st.session_state.resultats if r.get('succes')]
-        matchings = []
+    gauche, droite = st.columns([1, 2.3], gap="medium")
+    with gauche, st.container(key="carte_filtres"):
+        compteur = {}
         for r in resultats:
-            m = calculer_matching(r['infos'], offre)
-            matchings.append({'CV': r, **m})
-        matchings.sort(key=lambda x: x['score'], reverse=True)
-        
-        st.markdown("---")
-        st.subheader("🏆 Résultats du matching")
-        
-        for i, m in enumerate(matchings[:10]):
-            r = m['CV']
-            i_info = r['infos']
-            nom = f"{i_info.get('prenom', 'RAS')} {i_info.get('nom', 'RAS')}".strip()
-            
-            if m['score'] >= 70: badge = "✅ MATCH FORT"
-            elif m['score'] >= 40: badge = "⚠️ MATCH PARTIEL"
-            else: badge = "❌ FAIBLE"
-            
-            with st.expander(f"**{nom}** — {badge} : {m['score']}%", expanded=(i < 3)):
-                c1, c2 = st.columns(2)
-                with c1:
-                    st.markdown(f"**Score : {m['score']}%**")
-                    st.progress(m['score'] / 100)
-                    st.markdown(f"**Domaine :** {r['categorie']}")
-                    st.markdown(f"**Métier :** {r.get('metier', 'RAS')}")
-                    st.markdown(f"**Expérience :** {i_info.get('annees_experience', 0)} ans")
-                with c2:
-                    if m['communs']:
-                        st.markdown("**✅ Points forts :**")
-                        for mot in m['communs'][:6]: st.markdown(f"- {mot}")
-                    if m['manquants']:
-                        st.markdown("**⚠️ À améliorer :**")
-                        for mot in m['manquants'][:4]: st.markdown(f"- {mot}")
+            compteur[r['categorie']] = compteur.get(r['categorie'], 0) + 1
+        ui.afficher('<div class="cv-h3">Domaine</div>')
+        domaines = [d for d, _ in sorted(compteur.items(), key=lambda x: -x[1])
+                    if st.checkbox(d, key=f"f_dom_{nom_dossier(d)}")]
 
+        exp_min = st.session_state.get('f_exp_min', 0)
+        ui.afficher(f'<div class="cv-h3" style="margin-top:0.6rem">Expérience minimum : '
+                    f'<span style="color:{ui.ROUGE}">{exp_min} an{"s" if exp_min > 1 else ""}</span></div>')
+        exp_max = max([10] + [r['infos'].get('annees_experience', 0) for r in resultats])
+        exp_min = st.slider("Expérience minimum", 0, exp_max, key="f_exp_min", label_visibility="collapsed")
+
+        ui.afficher('<div class="cv-h3">Niveau d\'études</div>')
+        niveau = st.selectbox("Niveau d'études", ["Tous les niveaux"] + NIVEAUX, key="f_niveau",
+                              label_visibility="collapsed")
+
+        ui.afficher('<div class="cv-h3">Compétences</div>')
+        toutes_comp = sorted({c for r in resultats for c in r['infos'].get('competences', [])})
+        competences = st.multiselect("Compétences", toutes_comp, key="f_comp", placeholder="+ Ajouter",
+                                     label_visibility="collapsed")
+
+        with st.expander("Plus de critères"):
+            sexes = st.multiselect("Sexe", ['Homme', 'Femme', 'RAS'], key="f_sexe")
+            villes = st.multiselect("Ville", sorted({r['infos'].get('ville', 'RAS') for r in resultats}), key="f_ville")
+            ages = st.slider("Âge", 16, 70, (16, 70), key="f_age")
+
+        st.button("Réinitialiser", key="btn_reinit_filtres", use_container_width=True, on_click=reinitialiser_filtres)
+
+    selection = []
+    for r in resultats:
+        i = r['infos']
+        if domaines and r['categorie'] not in domaines: continue
+        if i.get('annees_experience', 0) < exp_min: continue
+        if niveau != "Tous les niveaux" and i.get('niveau_etudes') != niveau: continue
+        if not set(competences) <= set(i.get('competences', [])): continue
+        if sexes and i.get('sexe') not in sexes: continue
+        if villes and i.get('ville') not in villes: continue
+        age = str(i.get('age', 'RAS'))
+        if age.isdigit() and not ages[0] <= int(age) <= ages[1]: continue
+        if recherche:
+            cible = " ".join([i.get('nom', ''), i.get('prenom', ''), i.get('etablissement', ''),
+                              " ".join(i.get('competences', [])), r['fichier'], i.get('texte_brut', '')]).lower()
+            if recherche.lower() not in cible: continue
+        selection.append(r)
+    selection.sort(key=lambda r: r['confiance'], reverse=True)
+
+    with droite:
+        puces = [ui.pastille_domaine(d) for d in domaines]
+        if exp_min: puces.append(ui.pastille(f"≥ {texte_experience(exp_min)} d'expérience", 'rose'))
+        if niveau != "Tous les niveaux": puces.append(ui.pastille(niveau, 'bleu'))
+        puces += [ui.pastille(c, 'gris') for c in competences]
+        ui.afficher(f'<div style="display:flex;flex-wrap:wrap;gap:0.5rem;align-items:center;margin-bottom:0.2rem">'
+                    f'<span style="color:#3A4357"><b style="color:{ui.BLEU}">{len(selection)} CV</b> sur {len(resultats)}</span>'
+                    f'{"".join(puces)}</div>')
+        if selection:
+            lignes = ''.join(
+                f'<tr><td><div class="cv-nom">{escape(nom_court(r["infos"]))}</div><div class="cv-fichier">{escape(r["fichier"])}</div></td>'
+                f'<td>{ui.pastille_domaine(r["categorie"])}</td>'
+                f'<td>{texte_experience(r["infos"].get("annees_experience", 0))}</td>'
+                f'<td>{escape(r["infos"].get("niveau_etudes", "RAS")).replace("RAS", "—")}</td>'
+                f'<td class="cv-droite">{r["confiance"] * 100:.0f} %</td></tr>' for r in selection)
+            ui.afficher(f'<table class="cv-table"><thead><tr><th>Candidat</th><th>Domaine</th><th>Expérience</th>'
+                        f'<th>Formation</th><th style="text-align:right">Confiance</th></tr></thead><tbody>{lignes}</tbody></table>')
+        else:
+            ui.message("Aucun CV ne correspond à ces critères.", 'ambre', 'alerte')
+
+        _, b1, b2 = st.columns([1, 1.3, 1.4])
+        with b1:
+            st.button("Enregistrer ce filtre", key="btn_enregistrer_filtre", use_container_width=True,
+                      disabled=not selection, on_click=enregistrer_selection, args=(selection, domaines),
+                      help="Copie les CV de la sélection dans un dossier de CV_filtres")
+        with b2:
+            bouton_export("Exporter la sélection", selection, "btn_export_selection", "Selection")
+
+# ============================================================
+# PAGE VALIDATION
+# ============================================================
+CHOIX_VIDE = "Sélectionner..."
+CHOIX_NOUVEAU = "Nouveau domaine..."
+
+
+def selectionner_cv(idx):
+    st.session_state.validation_sel = idx
+
+
+def choisir_suggestion(idx, domaine):
+    st.session_state[f"val_choix_{idx}"] = domaine
+    st.session_state[f"val_autre_{idx}"] = CHOIX_VIDE
+
+
+def cv_suivant(idx):
+    file = st.session_state.cv_a_valider
+    if idx in file and len(file) > 1:
+        st.session_state.validation_sel = file[(file.index(idx) + 1) % len(file)]
+
+
+def valider_domaine(idx):
+    autre = st.session_state.get(f"val_autre_{idx}", CHOIX_VIDE)
+    if autre == CHOIX_NOUVEAU:
+        final = st.session_state.get(f"val_nouveau_{idx}", "").strip()
+    elif autre != CHOIX_VIDE:
+        final = autre
+    else:
+        final = st.session_state.get(f"val_choix_{idx}")
+    if not final:
+        flash("Choisissez un domaine avant de valider.", 'ambre', 'alerte')
+        return
+    r = st.session_state.resultats[idx]
+    app = st.session_state.apprentissage
+    apprendre = st.session_state.get(f"val_apprendre_{idx}", app['options'].get('auto', True))
+    enregistrer_decision(app, r, final, apprendre)
+    if final != r.get('categorie_predite') and idx not in st.session_state.cv_corriges:
+        st.session_state.cv_corriges.append(idx)
+    changer_domaine(r, final)
+    cv_suivant(idx)
+    st.session_state.cv_a_valider.remove(idx)
+    if apprendre and app['options'].get('auto', True):
+        reentrainer_classificateur()
+    flash(f"<b>{escape(r['fichier'])}</b> validé en <b>{escape(final)}</b>.")
+
+
+def domaines_disponibles():
+    appris = {e['domaine'] for e in st.session_state.apprentissage.get('exemples', [])}
+    return sorted((set(CATEGORIES) | appris) - {'Non classé'})
+
+
+def page_validation():
+    resultats = st.session_state.resultats
+    file = [i for i in st.session_state.cv_a_valider if i < len(resultats)]
+    nb_valides = sum(1 for i, r in enumerate(resultats) if r.get('succes') and i not in file)
+    c1, c2 = st.columns([1.5, 1.2], vertical_alignment="center")
+    with c1: ui.entete("Validation des classements")
+    with c2:
+        compteurs = [("À valider", len(file), 'ambre'), ("Validés", nb_valides, 'vert'),
+                     ("Corrigés", len(st.session_state.cv_corriges), 'bleu')]
+        ui.afficher('<div class="cv-compteurs">' + ''.join(
+            f'<div class="cv-compteur" style="background:{ui.TONS[t][0]};color:{ui.TONS[t][1]}">{l} <b>{n}</b></div>'
+            for l, n, t in compteurs) + '</div>')
+
+    if not file:
+        etat_vide("Aucun CV en attente de validation.", "Voir les résultats", "Résultats")
+        return
+    sel = st.session_state.validation_sel if st.session_state.validation_sel in file else file[0]
+    r = resultats[sel]
+    seuil = st.session_state.seuil_confiance
+
+    gauche, droite = st.columns([1, 1.6], gap="medium")
+    with gauche, st.container(key="carte_file"):
+        ui.afficher('<div class="cv-h3">File d\'attente</div>')
+        for idx in file:
+            ri = resultats[idx]
+            if ri['categorie'] == 'Non classé':
+                lisible = len(ri['infos'].get('texte_brut', '').strip()) >= 300
+                info = "Non classé · " + ("domaine incertain" if lisible else "texte peu lisible")
+            else:
+                info = f"{ri['categorie']} · confiance {ri['confiance'] * 100:.0f} %"
+            with st.container(key=f"clic_file_{idx}"):
+                ui.afficher(f'<div class="cv-file {"actif" if idx == sel else ""}"><div class="cv-file-nom">'
+                            f'{escape(ri["fichier"])}</div><div class="cv-file-info">{escape(info)}</div></div>')
+                st.button("Ouvrir", key=f"file_{idx}", on_click=selectionner_cv, args=(idx,))
+        ui.afficher(f'<div class="cv-muted" style="margin-top:1rem">Les CV sous {seuil} % de confiance '
+                    f'arrivent ici automatiquement.</div>')
+
+    with droite, st.container(key="carte_detail"):
+        cat = r['categorie']
+        sous = ("Aucun domaine détecté avec certitude" if cat == 'Non classé'
+                else f"Classé en {cat} avec {r['confiance'] * 100:.0f} % de confiance")
+        h1, h2 = st.columns([2.5, 1.2])
+        with h1:
+            ui.afficher(f'<div style="display:flex;gap:1rem;align-items:center">'
+                        f'<div class="cv-stat-icone" style="background:{ui.TONS["rose"][0]};width:56px;height:56px">'
+                        f'{ui.icone("fichier", 24, ui.ROUGE)}</div><div><div style="font-size:1.35rem;font-weight:800;'
+                        f'color:{ui.BLEU};word-break:break-all">{escape(r["fichier"])}</div><div class="cv-muted">{escape(sous)}</div></div></div>')
+        with h2:
+            if st.button("Modifier les infos", key="btn_modifier_infos", type="tertiary",
+                         help="Corriger le nom, le contact, la formation… extraits du CV"):
+                modale_correction(sel)
+        ui.afficher('<div class="cv-h2" style="font-size:1.3rem;margin-top:0.2rem">Domaines suggérés</div>')
+
+        suggestions = st.session_state.classif.suggerer(r['infos'].get('texte_brut', ''))
+        if cat != 'Non classé' and cat not in [d for d, _ in suggestions]:
+            suggestions = [(cat, r['confiance'])] + suggestions[:2]
+        cle_choix = f"val_choix_{sel}"
+        if cle_choix not in st.session_state:
+            st.session_state[cle_choix] = cat if cat != 'Non classé' else (suggestions[0][0] if suggestions else None)
+        for j, (dom, proba) in enumerate(suggestions):
+            actif = st.session_state[cle_choix] == dom and st.session_state.get(f"val_autre_{sel}", CHOIX_VIDE) == CHOIX_VIDE
+            couleur = ui.BLEU if j == 0 else "#5B6478"
+            with st.container(key=f"clic_sugg_{sel}_{j}"):
+                ui.afficher(f'<div class="cv-suggestion {"actif" if actif else ""}"><span class="cv-radio"></span>'
+                            f'<span class="cv-suggestion-nom">{escape(dom)}</span>{ui.barre(proba * 100, couleur)}'
+                            f'<span class="cv-suggestion-pct">{proba * 100:.0f} %</span></div>')
+                st.button(f"Choisir {dom}", key=f"sugg_{sel}_{j}", on_click=choisir_suggestion, args=(sel, dom))
+
+        ui.afficher('<div class="cv-h2" style="font-size:1.3rem;margin-top:0.4rem">Ou choisir un autre domaine</div>')
+        options = [CHOIX_VIDE] + domaines_disponibles()
+        if st.session_state.apprentissage['options'].get('nouveau_domaine'):
+            options.append(CHOIX_NOUVEAU)
+        s1, _ = st.columns([2.2, 1])
+        with s1:
+            autre = st.selectbox("Autre domaine", options, key=f"val_autre_{sel}", label_visibility="collapsed")
+            if autre == CHOIX_NOUVEAU:
+                st.text_input("Nom du nouveau domaine", key=f"val_nouveau_{sel}")
+
+        a1, a2, _ = st.columns([1.6, 1.4, 0.4], vertical_alignment="center")
+        with a1:
+            st.checkbox("Apprendre de cette décision", key=f"val_apprendre_{sel}",
+                        value=st.session_state.apprentissage['options'].get('auto', True))
+        with a2:
+            st.button("(voir l'apprentissage)", key="btn_voir_apprentissage", type="tertiary",
+                      on_click=aller_a, args=("Apprentissage",))
+
+        ui.afficher('<div style="height:2.5rem"></div>')
+        _, b1, b2 = st.columns([0.5, 1.2, 1.2], vertical_alignment="center")
+        with b1:
+            st.button("Passer au suivant", key="btn_passer", use_container_width=True,
+                      on_click=cv_suivant, args=(sel,), disabled=len(file) < 2)
+        with b2:
+            st.button("Valider le domaine", key="btn_valider_domaine", type="primary",
+                      use_container_width=True, on_click=valider_domaine, args=(sel,))
+
+
+@st.dialog("Correction des informations", width="large")
+def modale_correction(idx_cv):
+    r = st.session_state.resultats[idx_cv]
+    infos = r['infos']
+    st.markdown(f"**{r['fichier']}**")
+
+    st.markdown("##### Identité")
+    c1, c2 = st.columns(2)
+    new_nom = c1.text_input("Nom", value=infos.get('nom', 'RAS'), key=f"cn_{idx_cv}")
+    new_prenom = c2.text_input("Prénom", value=infos.get('prenom', 'RAS'), key=f"cp_{idx_cv}")
+    c1, c2 = st.columns(2)
+    new_email = c1.text_input("Email", value=infos.get('email', 'RAS'), key=f"ce_{idx_cv}")
+    new_tel = c2.text_input("Téléphone", value=infos.get('telephone', 'RAS'), key=f"ct_{idx_cv}")
+    options_sexe = ['RAS', 'Homme', 'Femme']
+    sexe_actuel = infos.get('sexe', 'RAS')
+    new_sexe = st.radio("Sexe", options_sexe, horizontal=True, key=f"cs_{idx_cv}",
+                        index=options_sexe.index(sexe_actuel) if sexe_actuel in options_sexe else 0)
+    c1, c2 = st.columns(2)
+    age_actuel = str(infos.get('age', 'RAS'))
+    # Âge inconnu → champ vide (évite d'enregistrer un âge inventé) ; borné pour éviter une exception Streamlit
+    age_def = min(max(int(age_actuel), 15), 85) if age_actuel.isdigit() else None
+    new_age = c1.number_input("Âge", min_value=15, max_value=85, value=age_def, key=f"ca_{idx_cv}")
+    situations = ['RAS', 'Célibataire', 'Marié(e)', 'Divorcé(e)', 'Veuf(ve)']
+    sit = infos.get('situation', 'RAS')
+    new_situation = c2.selectbox("Situation", situations, key=f"csit_{idx_cv}",
+                                 index=situations.index(sit) if sit in situations else 0)
+    c1, c2 = st.columns(2)
+    new_nationalite = c1.text_input("Nationalité", value=infos.get('nationalite', 'RAS'), key=f"cnat_{idx_cv}")
+    new_ville = c2.text_input("Ville", value=infos.get('ville', 'RAS'), key=f"cv_{idx_cv}")
+
+    st.markdown("##### Formation et expérience")
+    niveaux = ['RAS'] + NIVEAUX
+    niv = infos.get('niveau_etudes', 'RAS')
+    c1, c2 = st.columns(2)
+    new_niveau = c1.selectbox("Niveau d'études", niveaux, key=f"cniv_{idx_cv}",
+                              index=niveaux.index(niv) if niv in niveaux else 0)
+    new_etab = c2.text_input("Établissement", value=infos.get('etablissement', 'RAS'), key=f"cetab_{idx_cv}")
+    c1, c2 = st.columns(2)
+    new_experience = c1.number_input("Années d'expérience", min_value=0, max_value=60, step=1, key=f"cexp_{idx_cv}",
+                                     value=min(max(int(infos.get('annees_experience', 0)), 0), 60))
+    new_poste = c2.text_input("Poste actuel", value=infos.get('poste_actuel', 'RAS'), key=f"cposte_{idx_cv}")
+
+    st.markdown("##### Compétences et langues")
+    new_comps = st.text_area("Compétences (séparées par des virgules)", height=80, key=f"ccomp_{idx_cv}",
+                             value=', '.join(infos.get('competences', [])))
+    c1, c2 = st.columns(2)
+    new_langues = c1.text_input("Langues", value=infos.get('langues', 'RAS'), key=f"clang_{idx_cv}")
+    new_certs = c2.text_input("Certifications", value=infos.get('certifications', 'RAS'), key=f"ccert_{idx_cv}")
+
+    st.markdown("##### Métier")
+    metiers = ['RAS'] + list(CATEGORIES.get(r['categorie'], {}).get('metiers', {}).keys())
+    if r.get('metier', 'RAS') not in metiers:
+        metiers.insert(1, r['metier'])
+    new_metier = st.selectbox(f"Métier ({r['categorie']})", metiers, key=f"cm_{idx_cv}",
+                              index=metiers.index(r.get('metier', 'RAS')))
+
+    c1, c2 = st.columns(2)
+    if c1.button("Enregistrer", type="primary", use_container_width=True, key=f"save_{idx_cv}"):
+        corrections = {
+            'nom': new_nom, 'prenom': new_prenom, 'email': new_email, 'telephone': new_tel,
+            'sexe': new_sexe, 'age': str(int(new_age)) if new_age is not None else 'RAS',
+            'situation': new_situation, 'nationalite': new_nationalite, 'ville': new_ville,
+            'niveau_etudes': new_niveau, 'etablissement': new_etab, 'annees_experience': new_experience,
+            'poste_actuel': new_poste, 'langues': new_langues, 'certifications': new_certs,
+        }
+        for champ, val in corrections.items():
+            if infos.get(champ, 'RAS') != val:
+                enregistrer_correction(st.session_state.apprentissage, champ, infos.get(champ, 'RAS'), val, new_prenom)
+            infos[champ] = val
+        infos['competences'] = [c.strip() for c in new_comps.split(',') if c.strip()]
+        r['metier'] = new_metier
+        r['scores'] = calculer_score(infos)
+        r['resume'] = generer_resume(infos, r['categorie'], new_metier)
+        flash("Informations du candidat enregistrées.")
+        st.rerun()
+    if c2.button("Fermer", use_container_width=True, key=f"close_{idx_cv}"):
+        st.rerun()
+
+# ============================================================
+# PAGE APPRENTISSAGE
+# ============================================================
+def relancer_apprentissage():
+    reentrainer_classificateur()
+    nb = len(st.session_state.apprentissage['exemples'])
+    flash(f"Modèle réentraîné avec {nb} CV validé{'s' if nb > 1 else ''} par un humain.")
+
+
+def sauver_options():
+    app = st.session_state.apprentissage
+    app['options']['auto'] = st.session_state.opt_auto
+    app['options']['nouveau_domaine'] = st.session_state.opt_nouveau
+    sauvegarder_apprentissage(app)
+
+
+def page_apprentissage():
+    app = st.session_state.apprentissage
+    c1, c2 = st.columns([3, 1.3], vertical_alignment="center")
+    with c1: ui.entete("Apprentissage du modèle")
+    with c2:
+        st.button("Relancer l'apprentissage", key="btn_relancer", type="primary", use_container_width=True,
+                  on_click=relancer_apprentissage)
+
+    s = stats_decisions(app)
+    if s['precision'] is None:
+        carte_precision = ui.carte_stat("Précision actuelle", "—", ui.BLEU, sous_texte="aucune décision pour le moment")
+    else:
+        couleur = ui.VERT if s['precision'] >= 80 else (ui.TONS['ambre'][1] if s['precision'] >= 60 else ui.ROUGE)
+        carte_precision = ui.carte_stat("Précision actuelle", f"{s['precision']:.0f} %", couleur,
+                                        sous_texte=f"sur {s['nb_decisions']} CV vérifiés", couleur_sous=couleur)
+    maj = app['stats'].get('derniere_maj')
+    heure_maj = datetime.fromisoformat(maj).strftime("%H:%M") if maj else "—"
+    date_maj = datetime.fromisoformat(maj).strftime("%d/%m/%Y") if maj else ""
+    ui.afficher(ui.grille([
+        carte_precision,
+        ui.carte_stat("Corrections apprises", s['corrections'], sous_texte=f"dont {s['corrections_jour']} aujourd'hui"),
+        ui.carte_stat("CV d'entraînement", len(app['exemples']), sous_texte="validés par un humain"),
+        ui.carte_stat("Dernière mise à jour", heure_maj,
+                      sous_texte=f"Modèle v1.{app['stats'].get('version_modele', 0)} · {date_maj}".rstrip(' ·')),
+    ], 4))
+
+    gauche, droite = st.columns([1.55, 1], gap="medium")
+    with gauche:
+        if s['par_domaine']:
+            pire = min(s['par_domaine'], key=lambda x: x[1])[0] if len(s['par_domaine']) > 1 else None
+            lignes = ''.join(
+                f'<div class="cv-precision"><span>{escape(d)}</span>{ui.barre(p, ui.ROUGE if d == pire else ui.BLEU)}'
+                f'<span class="pct" style="color:{ui.ROUGE if d == pire else ui.BLEU}">{p:.0f} %</span></div>'
+                for d, p, n in s['par_domaine'][:8])
+        else:
+            lignes = '<div class="cv-muted">Validez des CV pour mesurer la précision de chaque domaine.</div>'
+        note = ''
+        if s['confusion']:
+            reel, predit = s['confusion']
+            note = (f'<div class="cv-muted" style="margin-top:1.4rem">{escape(reel)} est le domaine le plus souvent '
+                    f'confondu avec {escape(predit)} : vos corrections l\'aident à progresser.</div>')
+        ui.afficher(f'<div class="cv-carte" style="min-height:420px"><div class="cv-h2" style="margin-bottom:0.8rem">'
+                    f'Précision par domaine</div>{lignes}{note}</div>')
+
+    with droite, st.container(key="carte_corrections"):
+        if s['recentes']:
+            liste = ''.join(
+                f'<div class="cv-correction"><div style="font-weight:600;color:#0F1B3D">{escape(d["fichier"])}</div>'
+                f'<div style="margin-top:0.2rem"><s>{escape(d["predit"])}</s> → <b style="color:{ui.BLEU}">'
+                f'{escape(d["final"])}</b></div></div>' for d in s['recentes'])
+        else:
+            liste = '<div class="cv-muted">Aucune correction pour le moment.</div>'
+        ui.afficher(f'<div class="cv-h2" style="margin-bottom:0.4rem">Corrections récentes</div>{liste}'
+                    f'<div style="height:1.5rem"></div>')
+        for libelle, cle, option in [("Apprentissage automatique", "opt_auto", 'auto'),
+                                     ("Proposer un domaine nouveau", "opt_nouveau", 'nouveau_domaine')]:
+            t, c = st.columns([5, 1], vertical_alignment="center")
+            with t: ui.afficher(f'<b style="color:#0F1B3D">{libelle}</b>')
+            with c:
+                st.checkbox(libelle, value=app['options'].get(option, False), key=cle,
+                            label_visibility="collapsed", on_change=sauver_options)
+
+# ============================================================
+# PAGE CORRESPONDANCE
+# ============================================================
+def page_correspondance():
+    ui.entete("Correspondance avec une offre",
+              "Collez une offre d'emploi pour classer les CV analysés selon leur adéquation.")
+    with st.container(key="carte_offre"):
+        offre = st.text_area("Description de l'offre", height=180, key="offre_text",
+                             placeholder="Ex : Comptable confirmé, 5 ans d'expérience minimum, maîtrise de Sage et Excel")
+        _, b = st.columns([3, 1.2])
+        lancer = b.button("Lancer la correspondance", type="primary", key="btn_matching", use_container_width=True)
+
+    resultats = [r for r in st.session_state.resultats if r.get('succes')]
+    if lancer:
+        if not offre.strip():
+            ui.message("Collez d'abord une offre d'emploi.", 'ambre', 'alerte')
+            return
+        if not resultats:
+            etat_vide("Aucun CV analysé. Lancez d'abord une analyse.", "Analyser des CV", "Analyser")
+            return
+        correspondances = [(r, calculer_matching(r['infos'], offre)) for r in resultats]
+        st.session_state.correspondances = sorted(correspondances, key=lambda x: x[1]['score'], reverse=True)
+
+    correspondances = st.session_state.get('correspondances')
+    if not correspondances:
+        return
+    lignes = ''
+    for r, m in correspondances[:20]:
+        ton = 'vert' if m['score'] >= 70 else ('ambre' if m['score'] >= 40 else 'rose')
+        forts = ' '.join(ui.pastille(c, 'gris') for c in m['communs'][:4]) or '—'
+        manque = ', '.join(escape(c) for c in m['manquants'][:3]) or '—'
+        lignes += (f'<tr><td><div class="cv-nom">{escape(nom_court(r["infos"]))}</div><div class="cv-fichier">{escape(r["fichier"])}</div></td>'
+                   f'<td>{ui.pastille_domaine(r["categorie"])}</td><td>{texte_experience(r["infos"].get("annees_experience", 0))}</td>'
+                   f'<td>{forts}</td><td class="cv-muted">{manque}</td>'
+                   f'<td class="cv-droite"><span class="cv-pill" style="background:{ui.TONS[ton][0]};color:{ui.TONS[ton][1]}">'
+                   f'{m["score"]:.0f} %</span></td></tr>')
+    ui.afficher(f'<div class="cv-h2" style="margin:0.8rem 0 0.6rem 0">Meilleures correspondances</div>'
+                f'<table class="cv-table"><thead><tr><th>Candidat</th><th>Domaine</th><th>Expérience</th>'
+                f'<th>Points forts</th><th>À compléter</th><th style="text-align:right">Correspondance</th></tr></thead>'
+                f'<tbody>{lignes}</tbody></table>')
+
+# ============================================================
+# PAGE EMAILS
+# ============================================================
+def traiter_email(em, gestionnaire):
+    """Analyse les pièces jointes d'un email puis le déplace dans le dossier des emails traités"""
+    nb = 0
+    for pj in em['pieces_jointes']:
+        r = analyser_cv(pj['chemin'], pj['nom_original'], source=em['email_expediteur'],
+                        copie_nom=pj['nom_sauvegarde'], sous_dossier_metier=True)
+        nb += r['succes']
+    ok, msg = gestionnaire.deplacer_email(em['id'])
+    return nb, ok, msg
+
+
+def page_emails():
+    ui.entete("Boîte mail RH", "Récupérez et analysez automatiquement les CV reçus par email.")
+    try:
+        config = st.secrets["email"]
+        serveur, port = config["imap_server"], config["imap_port"]
+        email_address, mot_de_passe = config["email_address"], config["app_password"]
+        dossier_traites = config.get("dossier_traites", "CV traités")
+    except Exception:
+        ui.message("Identifiants de messagerie introuvables. Copiez <code>.streamlit/secrets.toml.example</code> "
+                   "en <code>.streamlit/secrets.toml</code> et renseignez-le.", 'rose', 'erreur')
+        return
+
+    with st.container(key="carte_boite"):
+        t, b1, b2 = st.columns([4, 1.6, 1], vertical_alignment="center")
+        with t:
+            ui.afficher(f'<div class="cv-h3" style="margin-bottom:0.2rem">Boîte connectée : {escape(email_address)}</div>'
+                        f'<div class="cv-muted">Serveur {escape(str(serveur))}:{port} · emails traités déplacés dans '
+                        f'« {escape(dossier_traites)} »</div>')
+        verifier = b1.button("Vérifier les emails", type="primary", key="btn_verifier_emails", use_container_width=True)
+        if b2.button("Vider", key="btn_vider_emails", use_container_width=True):
+            st.session_state.pop('emails_recuperes', None)
+            st.rerun()
+
+    def gestionnaire():
+        return GestionnaireEmail(serveur, port, email_address, mot_de_passe, dossier_traites)
+
+    if verifier:
+        with st.spinner("Connexion à la boîte mail..."):
+            g = gestionnaire()
+            emails, msg = g.recuperer_emails_non_lus(max_emails=30)
+            g.se_deconnecter()
+        st.session_state.emails_recuperes = emails
+        if not emails:
+            ui.message(escape(msg), 'bleu', 'boite')
+
+    emails = st.session_state.get('emails_recuperes')
+    if emails is None:
+        ui.message("Cliquez sur « Vérifier les emails » pour récupérer les CV reçus.", 'bleu', 'email')
+        return
+    if not emails:
+        return
+
+    nb_cv = sum(e['nb_cv'] for e in emails)
+    ui.afficher(ui.grille([
+        ui.carte_stat("Emails", len(emails), icone_nom='email', ton='bleu'),
+        ui.carte_stat("CV reçus", nb_cv, icone_nom='trombone', ton='rose'),
+        ui.carte_stat("À traiter", len(emails), icone_nom='boite', ton='ambre'),
+    ], 3))
+
+    for i, em in enumerate(emails):
+        with st.container(key=f"carte_email_{i}"):
+            t, b = st.columns([4, 1.4])
+            with t:
+                pjs = ''.join(f'<div class="cv-muted" style="display:flex;gap:0.4rem;align-items:center">'
+                              f'{ui.icone("trombone", 15, ui.GRIS)}{escape(pj["nom_original"])} ({pj["taille"] / 1024:.0f} Ko)</div>'
+                              for pj in em['pieces_jointes'])
+                ui.afficher(f'<div class="cv-h3" style="margin:0">{escape(em["sujet"])}</div>'
+                            f'<div class="cv-muted" style="margin:0.2rem 0 0.5rem 0">{escape(em["expediteur"])} · {escape(em["date"])}</div>{pjs}')
+            with b:
+                if st.button("Analyser les CV", type="primary", key=f"btn_analyser_{i}", use_container_width=True):
+                    with st.spinner(f"Analyse de {em['nb_cv']} CV..."):
+                        g = gestionnaire()
+                        g.se_connecter()
+                        nb, ok, msg = traiter_email(em, g)
+                        g.se_deconnecter()
+                    st.session_state.emails_recuperes = [e for e in emails if e['id'] != em['id']]
+                    if ok:
+                        flash(f"{nb} CV analysé{'s' if nb > 1 else ''} · email déplacé dans « {escape(dossier_traites)} ».")
+                    else:
+                        flash(f"{nb} CV analysé{'s' if nb > 1 else ''}, mais l'email n'a pas pu être déplacé : {escape(msg)}", 'ambre', 'alerte')
+                    st.rerun()
+                if st.button("Ignorer", key=f"btn_ignorer_{i}", use_container_width=True):
+                    st.session_state.emails_recuperes = [e for e in emails if e['id'] != em['id']]
+                    st.rerun()
+
+    if st.button("Analyser tous les emails", type="primary", key="btn_analyser_tous"):
+        total, echecs = 0, 0
+        with st.spinner("Analyse de tous les CV reçus..."):
+            g = gestionnaire()
+            g.se_connecter()
+            for em in emails:
+                nb, ok, _ = traiter_email(em, g)
+                total += nb
+                echecs += not ok
+            g.se_deconnecter()
+        st.session_state.emails_recuperes = []
+        flash(f"{total} CV analysés et classés."
+              + (f" {echecs} email(s) n'ont pas pu être déplacés." if echecs else ""), 'ambre' if echecs else 'vert')
+        st.rerun()
 
 # ============================================================
 # PAGE PARAMÈTRES
 # ============================================================
-# ============================================================
-# PAGE EMAILS
-# ============================================================
-def page_emails():
-    """Page de gestion des emails - Récupération automatique des CV"""
-    st.markdown('<div class="main-title">📧 Boîte Mail RH</div>', unsafe_allow_html=True)
-    st.markdown('<div class="main-subtitle">Récupérez automatiquement les CV envoyés par email.</div>', unsafe_allow_html=True)
-    
-    # Charger les identifiants depuis secrets.toml
-    try:
-        config = st.secrets["email"]
-        serveur = config["imap_server"]
-        port = config["imap_port"]
-        email_address = config["email_address"]
-        mot_de_passe = config["app_password"]
-        dossier_traites = config.get("dossier_traites", "CV traités")
-    except Exception as e:
-        st.error(f"❌ Impossible de lire les identifiants : {e}")
-        st.info("💡 Vérifiez que le fichier `.streamlit/secrets.toml` existe et est bien configuré.")
-        return
-    
-    # Affichage de la config
-    st.markdown(f"""
-    <div style="background: white; border-radius: 12px; padding: 1rem 1.5rem;
-                border: 2px solid #e0e7ff; margin-bottom: 1rem;">
-        <div style="color: #2d4a7c; font-weight: 700; font-size: 0.9rem;">
-            📬 Boîte connectée : <b style="color: #2B3F8C;">{email_address}</b>
-        </div>
-        <div style="color: #64748b; font-size: 0.8rem; margin-top: 0.3rem;">
-            Serveur : {serveur}:{port} · Dossier traités : "{dossier_traites}"
-        </div>
-    </div>
-    """, unsafe_allow_html=True)
-    
-    # Boutons
-    col1, col2, col3 = st.columns([1, 1, 2])
-    with col1:
-        verifier = st.button("🔄 Vérifier les emails", type="primary", 
-                             use_container_width=True, key="btn_verifier_emails")
-    with col2:
-        if st.button("🗑️ Vider", use_container_width=True, 
-                     type="secondary", key="btn_vider_emails"):
-            if 'emails_recuperes' in st.session_state:
-                del st.session_state['emails_recuperes']
-            st.rerun()
-    
-    # Vérification
-    if verifier:
-        with st.spinner("📥 Connexion à la boîte mail..."):
-            gestionnaire = GestionnaireEmail(serveur, port, email_address, mot_de_passe, dossier_traites)
-            emails, message = gestionnaire.recuperer_emails_non_lus(max_emails=30)
-            gestionnaire.se_deconnecter()
-            
-            st.session_state['emails_recuperes'] = emails
-            st.session_state['config_email'] = {
-                'serveur': serveur, 'port': port,
-                'email': email_address, 'mdp': mot_de_passe,
-                'dossier': dossier_traites
-            }
-            
-            if emails:
-                st.success(f"✅ {message}")
-            else:
-                st.info(f"📭 {message}")
-    
-    # Affichage des emails
-    if 'emails_recuperes' in st.session_state:
-        emails = st.session_state['emails_recuperes']
-        
-        if not emails:
-            st.info("📭 Aucun email avec CV trouvé.")
-            return
-        
-        st.markdown("---")
-        
-        # Statistiques
-        nb_emails = len(emails)
-        nb_cv = sum(e['nb_cv'] for e in emails)
-        c1, c2, c3 = st.columns(3)
-        with c1:
-            st.markdown(f"""
-            <div class="stat-card">
-                <div>
-                    <div class="stat-label">📧 Emails</div>
-                    <div class="stat-value">{nb_emails}</div>
-                </div>
-                <div class="stat-icon">📧</div>
-            </div>
-            """, unsafe_allow_html=True)
-        with c2:
-            st.markdown(f"""
-            <div class="stat-card">
-                <div>
-                    <div class="stat-label">📎 CV</div>
-                    <div class="stat-value" style="color:#E63946;">{nb_cv}</div>
-                </div>
-                <div class="stat-icon">📎</div>
-            </div>
-            """, unsafe_allow_html=True)
-        with c3:
-            st.markdown(f"""
-            <div class="stat-card">
-                <div>
-                    <div class="stat-label">📨 À traiter</div>
-                    <div class="stat-value" style="color:#FF6B00;">{nb_emails}</div>
-                </div>
-                <div class="stat-icon">📨</div>
-            </div>
-            """, unsafe_allow_html=True)
-        
-        st.markdown("---")
-        st.subheader(f"📬 {nb_emails} email(s) avec CV")
-        
-        # Liste des emails
-        for i, em in enumerate(emails):
-            with st.expander(f"📧 **{em['email_expediteur']}** — {em['sujet'][:60]}", expanded=(i == 0)):
-                col1, col2 = st.columns([2, 1])
-                
-                with col1:
-                    st.markdown(f"**De :** {em['expediteur']}")
-                    st.markdown(f"**Sujet :** {em['sujet']}")
-                    st.markdown(f"**Date :** {em['date']}")
-                    st.markdown(f"**Pièces jointes ({em['nb_cv']}) :**")
-                    
-                    for pj in em['pieces_jointes']:
-                        taille_ko = pj['taille'] / 1024
-                        st.markdown(f"- 📎 `{pj['nom_original']}` ({taille_ko:.0f} Ko)")
-                
-                with col2:
-                    st.markdown("**Actions :**")
-                    
-                    # Bouton ANALYSER
-                    if st.button("✅ Analyser les CV", type="primary",
-                                 use_container_width=True, key=f"btn_analyser_{i}"):
-                        with st.spinner(f"📄 Analyse de {em['nb_cv']} CV..."):
-                            cv_analyses = []
-                            
-                            for pj in em['pieces_jointes']:
-                                chemin = pj['chemin']
-                                texte = lire_cv(chemin)
-                                if not texte:
-                                    continue
-                                
-                                # Extraction
-                                infos = st.session_state.extract.extraire_tout(texte)
-                                
-                                # Âge amélioré
-                                age_calc, _ = calculer_age_depuis_annee(texte)
-                                if age_calc != "RAS":
-                                    infos['age'] = age_calc
-                                
-                                # Sexe amélioré
-                                sexe_calc, _ = determiner_sexe_avec_confiance(texte, infos.get('prenom', 'RAS'))
-                                infos['sexe'] = sexe_calc
-                                
-                                # Apprentissage
-                                infos = appliquer_apprentissage(infos, st.session_state.apprentissage)
-                                
-                                # Classification
-                                cat, metier, conf = st.session_state.classif.classifier(texte)
-                                scores = calculer_score(infos)
-                                resume = generer_resume(infos, cat, metier)
-                                
-                                # Ajouter aux résultats
-                                st.session_state.resultats.append({
-                                    'fichier': pj['nom_original'],
-                                    'chemin': chemin,
-                                    'succes': True,
-                                    'categorie': cat,
-                                    'metier': metier,
-                                    'confiance': conf,
-                                    'infos': infos,
-                                    'scores': scores,
-                                    'resume': resume,
-                                    'source': f"📧 {em['email_expediteur']}"
-                                })
-                                
-                                # Validation si nécessaire
-                                seuil = st.session_state.seuil_confiance / 100
-                                champs_faibles = verifier_champs_a_valider(infos, cat, metier, st.session_state.seuil_confiance)
-                                if conf < seuil or len(champs_faibles) >= 2:
-                                    st.session_state.cv_a_valider.append(len(st.session_state.resultats) - 1)
-                                
-                                cv_analyses.append({
-                                    'nom': pj['nom_original'],
-                                    'domaine': cat,
-                                    'metier': metier
-                                })
-                                
-                                # Copie dans dossier
-                                domaine_clean = cat.replace(" ", "_").replace("/", "-")
-                                if metier and metier != "RAS":
-                                    metier_clean = metier.replace(" ", "_").replace("/", "-")
-                                    dest = os.path.join(DOSSIER_TRI, domaine_clean, metier_clean)
-                                else:
-                                    dest = os.path.join(DOSSIER_TRI, domaine_clean, "_Non_renseigné")
-                                os.makedirs(dest, exist_ok=True)
-                                try:
-                                    shutil.copy2(chemin, os.path.join(dest, pj['nom_sauvegarde']))
-                                except:
-                                    pass
-                            
-                            # Déplacer l'email dans "CV traités"
-                            try:
-                                config = st.session_state['config_email']
-                                gest = GestionnaireEmail(
-                                    config['serveur'], config['port'],
-                                    config['email'], config['mdp'], config['dossier']
-                                )
-                                gest.se_connecter()
-                                ok_dep, msg_dep = gest.deplacer_email(em['id'])
-                                gest.se_deconnecter()
-                                if not ok_dep:
-                                    st.warning(f"⚠️ {msg_dep}")
-                            except:
-                                pass
-                            
-                            st.success(f"✅ {len(cv_analyses)} CV analysé(s) et classé(s) !")
-                            st.info(f"📧 Email déplacé dans '{st.session_state['config_email']['dossier']}'")
-                            st.balloons()
-                            
-                            # Retirer de la liste
-                            st.session_state['emails_recuperes'] = [
-                                e for e in emails if e['id'] != em['id']
-                            ]
-                            st.rerun()
-                    
-                    # Bouton IGNORER
-                    if st.button("❌ Ignorer", use_container_width=True,
-                                 key=f"btn_ignorer_{i}"):
-                        st.session_state['emails_recuperes'] = [
-                            e for e in emails if e['id'] != em['id']
-                        ]
-                        st.rerun()
-        
-        # Export global
-        if emails:
-            st.markdown("---")
-            if st.button("📥 Analyser TOUS les emails d'un coup", type="primary",
-                         use_container_width=True, key="btn_analyser_tous"):
-                total_cv = 0
-                gest = GestionnaireEmail(serveur, port, email_address, mot_de_passe, dossier_traites)
-                gest.se_connecter()
-                for em in emails:
-                    for pj in em['pieces_jointes']:
-                        chemin = pj['chemin']
-                        texte = lire_cv(chemin)
-                        if not texte:
-                            continue
-                        
-                        infos = st.session_state.extract.extraire_tout(texte)
-                        age_calc, _ = calculer_age_depuis_annee(texte)
-                        if age_calc != "RAS":
-                            infos['age'] = age_calc
-                        sexe_calc, _ = determiner_sexe_avec_confiance(texte, infos.get('prenom', 'RAS'))
-                        infos['sexe'] = sexe_calc
-                        infos = appliquer_apprentissage(infos, st.session_state.apprentissage)
-                        cat, metier, conf = st.session_state.classif.classifier(texte)
-                        scores = calculer_score(infos)
-                        resume = generer_resume(infos, cat, metier)
-                        
-                        st.session_state.resultats.append({
-                            'fichier': pj['nom_original'], 'chemin': chemin, 'succes': True,
-                            'categorie': cat, 'metier': metier, 'confiance': conf,
-                            'infos': infos, 'scores': scores, 'resume': resume,
-                            'source': f"📧 {em['email_expediteur']}"
-                        })
-                        
-                        seuil = st.session_state.seuil_confiance / 100
-                        champs_faibles = verifier_champs_a_valider(infos, cat, metier, st.session_state.seuil_confiance)
-                        if conf < seuil or len(champs_faibles) >= 2:
-                            st.session_state.cv_a_valider.append(len(st.session_state.resultats) - 1)
-                        
-                        domaine_clean = cat.replace(" ", "_").replace("/", "-")
-                        metier_clean = (metier if metier != "RAS" else "_Non_renseigné").replace(" ", "_").replace("/", "-")
-                        dest = os.path.join(DOSSIER_TRI, domaine_clean, metier_clean)
-                        os.makedirs(dest, exist_ok=True)
-                        try:
-                            shutil.copy2(chemin, os.path.join(dest, pj['nom_sauvegarde']))
-                        except:
-                            pass
-                        total_cv += 1
-                    # Déplacer l'email dans "CV traités" pour ne pas le retraiter
-                    gest.deplacer_email(em['id'])
-                gest.se_deconnecter()
-                
-                st.success(f"🎉 {total_cv} CV analysés et classés !")
-                st.session_state['emails_recuperes'] = []
-                st.balloons()
-                st.rerun()
-    else:
-        st.info("👆 Cliquez sur **'Vérifier les emails'** pour récupérer les CV reçus.")
+def vider_session():
+    st.session_state.resultats = []
+    st.session_state.cv_a_valider = []
+    st.session_state.cv_corriges = []
+    st.session_state.journal = []
+    st.session_state.derniere_analyse = None
+    st.session_state.pop('correspondances', None)
+    flash("Session vidée : les résultats d'analyse ont été effacés.")
+
+
+def reinitialiser_apprentissage():
+    st.session_state.apprentissage = apprentissage_vide()
+    sauvegarder_apprentissage(st.session_state.apprentissage)
+    reentrainer_classificateur()
+    st.session_state.confirmer_reinit = False
+    flash("Apprentissage réinitialisé.")
+
+
 def page_parametres():
-    st.markdown('<div class="main-title">⚙️ Paramètres</div>', unsafe_allow_html=True)
-    
-    st.subheader("🎚️ Seuil de confiance")
-    st.session_state.seuil_confiance = st.slider(
-        "Seuil pour classement automatique (%)",
-        min_value=30, max_value=95,
-        value=st.session_state.seuil_confiance,
-        help="En dessous, l'app vous demande de valider"
-    )
-    
-    st.markdown("---")
-    st.subheader("📁 Dossiers")
-    c1, c2, c3 = st.columns(3)
-    with c1: st.text_input("Classement", value=DOSSIER_TRI, disabled=True, key="p_d1")
-    with c2: st.text_input("Export", value=DOSSIER_EXCEL, disabled=True, key="p_d2")
-    with c3: st.text_input("Filtres", value=DOSSIER_FILTRES, disabled=True, key="p_d3")
-    
-    st.markdown("---")
-    st.subheader(f"🏷️ {len(CATEGORIES)-1} domaines configurés")
-    nb_metiers = sum(len(data.get('metiers', {})) for data in CATEGORIES.values())
-    st.info(f"📊 **{len(CATEGORIES)-1}** domaines et **{nb_metiers}** métiers")
-    
+    ui.entete("Paramètres")
+    with st.container(key="carte_seuil"):
+        ui.afficher('<div class="cv-h2">Seuil de confiance</div><div class="cv-muted">En dessous de ce seuil, '
+                    'un CV est envoyé dans la file de validation.</div>')
+        st.session_state.seuil_confiance = st.slider("Seuil (%)", 30, 95, value=st.session_state.seuil_confiance)
+
+    with st.container(key="carte_dossiers"):
+        ui.afficher('<div class="cv-h2">Dossiers</div>')
+        c1, c2, c3 = st.columns(3)
+        c1.text_input("CV classés", value=os.path.abspath(DOSSIER_TRI), disabled=True, key="p_d1")
+        c2.text_input("Exports Excel", value=os.path.abspath(DOSSIER_EXCEL), disabled=True, key="p_d2")
+        c3.text_input("Sélections filtrées", value=os.path.abspath(DOSSIER_FILTRES), disabled=True, key="p_d3")
+
+    with st.container(key="carte_donnees"):
+        ui.afficher('<div class="cv-h2">Données</div>')
+        c1, c2 = st.columns(2)
+        with c1:
+            ui.afficher('<div class="cv-muted">Efface les résultats de la session en cours (les fichiers classés sont conservés).</div>')
+            st.button("Vider la session", key="btn_vider_session", on_click=vider_session)
+        with c2:
+            ui.afficher('<div class="cv-muted">Supprime tout ce que le modèle a appris de vos corrections.</div>')
+            confirmer = st.checkbox("Je confirme la réinitialisation", key="confirmer_reinit")
+            st.button("Réinitialiser l'apprentissage", key="btn_reinit_app", disabled=not confirmer,
+                      on_click=reinitialiser_apprentissage)
+
+    nb_metiers = sum(len(d.get('metiers', {})) for d in CATEGORIES.values())
+    ui.afficher(f'<div class="cv-h2" style="margin-top:0.6rem">Domaines configurés</div>'
+                f'<div class="cv-muted" style="margin-bottom:0.4rem">{len(CATEGORIES) - 1} domaines et {nb_metiers} métiers</div>')
     for cat, data in CATEGORIES.items():
         if cat == 'Non classé': continue
         metiers = data.get('metiers', {})
-        with st.expander(f"{data['emoji']} {cat} ({len(metiers)} métiers)"):
-            if metiers:
-                for metier, mots in metiers.items():
-                    st.markdown(f"**{metier}** : {', '.join(mots[:5])}")
-    
-    st.markdown("---")
-    st.subheader("ℹ️ À propos")
-    st.markdown(f"""
-    **CVSmart v11.0** — L'intelligence qui trie vos talents
-    
-    - 📄 Support : PDF, DOCX, Scans (OCR)
-    - 🎯 **{len(CATEGORIES)-1}** domaines et **{nb_metiers}** métiers
-    - 📊 Extraction de 25+ champs
-    - 🎚️ Seuil de confiance configurable
-    - 🧠 Apprentissage utilisateur (JSON)
-    - ⚠️ Validation manuelle si confiance faible
-    - 🔍 Filtrage multi-critères
-    - 🤝 Matching avec offres
-    - 📁 Export dossiers + Excel
-    - ✅ "RAS" si info absente
-    """)
+        with st.expander(f"{cat} ({len(metiers)} métiers)"):
+            for metier, mots in metiers.items():
+                st.markdown(f"**{metier}** : {', '.join(mots[:5])}")
 
+    ui.afficher(f'<div class="cv-carte" style="margin-top:1rem"><div class="cv-h2">À propos</div>'
+                f'<div class="cv-muted">CVSmart v{VERSION_APP} · CIBLE RH Emploi — classement automatique de CV '
+                f'(PDF, DOCX, scans via OCR), {len(CATEGORIES) - 1} domaines, validation humaine et apprentissage '
+                f'à partir de vos corrections.</div></div>')
 
 # ============================================================
 # MAIN
 # ============================================================
+FONCTIONS_PAGES = {
+    "Accueil": page_accueil, "Analyser": page_analyser, "Emails": page_emails,
+    "Résultats": page_resultats, "Filtrer": page_filtrer, "Validation": page_validation,
+    "Apprentissage": page_apprentissage, "Correspondance": page_correspondance,
+    "Paramètres": page_parametres,
+}
+
+
 def main():
-    inject_css()
+    ui.injecter_css()
     init_session()
-    page = afficher_menu()
-    
-    if page == "Accueil": page_accueil()
-    elif page == "Emails": page_emails()
-    elif page == "Analyser": page_analyser()
-    elif page == "Résultats": page_resultats()
-    elif page == "Filtrer": page_filtrer()
-    elif page == "Validation": page_validation()
-    elif page == "Apprentissage": page_apprentissage()
-    elif page == "Matching": page_matching()
-    elif page == "Paramètres": page_parametres()
+    afficher_menu()
+    if st.session_state.flash:
+        texte, ton, icone_nom = st.session_state.flash
+        st.session_state.flash = None
+        ui.message(texte, ton, icone_nom)
+    FONCTIONS_PAGES.get(st.session_state.page_active, page_accueil)()
 
 
 if __name__ == "__main__":
